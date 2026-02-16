@@ -46,6 +46,14 @@ from kredo.signing import (
     verify_revocation,
 )
 from kredo.client import KredoAPIError, KredoClient
+from kredo.ipfs import (
+    canonical_json_full,
+    fetch_document,
+    get_provider,
+    ipfs_enabled,
+    pin_document,
+)
+from kredo.exceptions import IPFSError
 from kredo.store import KredoStore
 from kredo.taxonomy import get_domains, get_skills
 
@@ -60,9 +68,11 @@ app = typer.Typer(
 identity_app = typer.Typer(help="Manage identities (Ed25519 keypairs)")
 trust_app = typer.Typer(help="Query the trust graph")
 taxonomy_app = typer.Typer(help="Browse the skill taxonomy")
+ipfs_app = typer.Typer(help="IPFS pinning for content-addressed attestations")
 app.add_typer(identity_app, name="identity")
 app.add_typer(trust_app, name="trust")
 app.add_typer(taxonomy_app, name="taxonomy")
+app.add_typer(ipfs_app, name="ipfs")
 
 
 def _get_store(db: Optional[Path] = None) -> KredoStore:
@@ -602,16 +612,17 @@ def register_cmd(
 @app.command("submit")
 def submit_cmd(
     attestation_id: str = typer.Argument(..., help="Local attestation ID to submit"),
+    pin: bool = typer.Option(False, "--pin", help="Also pin to IPFS (best-effort)"),
     api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
     db: Optional[Path] = typer.Option(None, "--db", hidden=True),
 ):
     """Submit a locally-signed attestation to the Discovery API."""
     store = _get_store(db)
     json_str = store.export_attestation_json(attestation_id)
-    store.close()
 
     if json_str is None:
         console.print(f"[red]Attestation not found locally: {attestation_id}[/red]")
+        store.close()
         raise typer.Exit(1)
 
     attestation = json.loads(json_str)
@@ -626,7 +637,23 @@ def submit_cmd(
         console.print(f"  API: {client.base_url}")
     except KredoAPIError as e:
         console.print(f"[red]Submission failed: {e}[/red]")
+        store.close()
         raise typer.Exit(1)
+
+    # Best-effort IPFS pin — doesn't fail the submit
+    if pin:
+        if not ipfs_enabled():
+            console.print("[yellow]IPFS not configured. Set KREDO_IPFS_PROVIDER to enable.[/yellow]")
+        else:
+            try:
+                provider = get_provider()
+                cid = pin_document(attestation, "attestation", provider)
+                store.save_ipfs_pin(cid, attestation_id, "attestation", provider.name)
+                console.print(f"[green]Pinned to IPFS:[/green] {cid}")
+            except IPFSError as e:
+                console.print(f"[yellow]IPFS pin failed (submit succeeded): {e}[/yellow]")
+
+    store.close()
 
 
 @app.command("lookup")
@@ -818,6 +845,161 @@ def search_cmd(
         table.add_row(type_short, subject_name, skill_info, prof_info, attestor_name, issued)
 
     console.print(table)
+
+
+# --- IPFS Commands ---
+
+def _resolve_document(doc_id: str, store: KredoStore) -> tuple[Optional[dict], str]:
+    """Look up a document by ID across attestations, revocations, disputes.
+
+    Returns (document_dict, document_type) or (None, "").
+    """
+    att = store.get_attestation(doc_id)
+    if att is not None:
+        return att, "attestation"
+    rev = store.get_revocation(doc_id)
+    if rev is not None:
+        return rev, "revocation"
+    disp = store.get_dispute(doc_id)
+    if disp is not None:
+        return disp, "dispute"
+    return None, ""
+
+
+@ipfs_app.command("pin")
+def ipfs_pin_cmd(
+    doc_id: str = typer.Argument(..., help="Attestation, revocation, or dispute ID to pin"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Pin a Kredo document to IPFS."""
+    if not ipfs_enabled():
+        console.print("[red]IPFS not configured. Set KREDO_IPFS_PROVIDER to 'local' or 'remote'.[/red]")
+        raise typer.Exit(1)
+
+    store = _get_store(db)
+    doc, doc_type = _resolve_document(doc_id, store)
+    if doc is None:
+        console.print(f"[red]Document not found: {doc_id}[/red]")
+        store.close()
+        raise typer.Exit(1)
+
+    try:
+        provider = get_provider()
+        cid = pin_document(doc, doc_type, provider)
+        store.save_ipfs_pin(cid, doc_id, doc_type, provider.name)
+        console.print(f"[green]Pinned {doc_type} to IPFS:[/green]")
+        console.print(f"  CID: {cid}")
+        console.print(f"  Document: {doc_id}")
+        console.print(f"  Provider: {provider.name}")
+    except IPFSError as e:
+        console.print(f"[red]IPFS pin failed: {e}[/red]")
+        store.close()
+        raise typer.Exit(1)
+    store.close()
+
+
+@ipfs_app.command("fetch")
+def ipfs_fetch_cmd(
+    cid: str = typer.Argument(..., help="IPFS CID to fetch"),
+    verify_sig: bool = typer.Option(True, "--verify/--no-verify", help="Verify Ed25519 signature"),
+    import_doc: bool = typer.Option(False, "--import", help="Import into local store"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Fetch a Kredo document from IPFS by CID."""
+    if not ipfs_enabled():
+        console.print("[red]IPFS not configured. Set KREDO_IPFS_PROVIDER to 'local' or 'remote'.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        doc = fetch_document(cid)
+    except IPFSError as e:
+        console.print(f"[red]IPFS fetch failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Determine document type
+    if "warning_id" in doc:
+        doc_type = "dispute"
+    elif "attestation_id" in doc:
+        doc_type = "revocation"
+    else:
+        doc_type = "attestation"
+
+    # Verify signature if requested
+    if verify_sig and doc.get("signature"):
+        try:
+            if doc_type == "attestation":
+                att = Attestation(**doc)
+                verify_attestation(att)
+            elif doc_type == "revocation":
+                rev = Revocation(**doc)
+                verify_revocation(rev)
+            elif doc_type == "dispute":
+                disp = Dispute(**doc)
+                verify_dispute(disp)
+            console.print(f"[green]Signature valid[/green] ({doc_type})")
+        except Exception as e:
+            console.print(f"[red]Signature verification failed: {e}[/red]")
+            if not import_doc:
+                console.print(json.dumps(doc, indent=2))
+            raise typer.Exit(1)
+
+    # Import if requested
+    if import_doc:
+        store = _get_store(db)
+        raw = json.dumps(doc)
+        if doc_type == "attestation":
+            store.save_attestation(raw)
+        elif doc_type == "revocation":
+            store.save_revocation(raw)
+        elif doc_type == "dispute":
+            store.save_dispute(raw)
+        console.print(f"[green]Imported {doc_type}:[/green] {doc.get('id', cid)}")
+        store.close()
+    else:
+        console.print(json.dumps(doc, indent=2))
+
+
+@ipfs_app.command("status")
+def ipfs_status_cmd(
+    doc_id: Optional[str] = typer.Argument(None, help="Document ID to check (omit for all)"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Check IPFS pin status for a document or list all pins."""
+    store = _get_store(db)
+
+    if doc_id:
+        cid = store.get_ipfs_cid(doc_id)
+        if cid is None:
+            console.print(f"[dim]No IPFS pin found for: {doc_id}[/dim]")
+        else:
+            pin = store.get_ipfs_pin(cid)
+            console.print(f"[green]Pinned:[/green]")
+            console.print(f"  CID: {cid}")
+            console.print(f"  Type: {pin['document_type']}")
+            console.print(f"  Provider: {pin['provider']}")
+            console.print(f"  Pinned at: {pin['pinned_at']}")
+    else:
+        pins = store.list_ipfs_pins()
+        if not pins:
+            console.print("[dim]No IPFS pins found.[/dim]")
+        else:
+            table = Table(title=f"IPFS Pins ({len(pins)})")
+            table.add_column("CID")
+            table.add_column("Document ID")
+            table.add_column("Type")
+            table.add_column("Provider")
+            table.add_column("Pinned At")
+            for p in pins:
+                table.add_row(
+                    p["cid"],
+                    p["document_id"],
+                    p["document_type"],
+                    p["provider"],
+                    p["pinned_at"],
+                )
+            console.print(table)
+
+    store.close()
 
 
 # --- Entry point for typer ---

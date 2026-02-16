@@ -13,6 +13,7 @@ from kredo.exceptions import (
     ExpiredAttestationError,
     TaxonomyError,
     StoreError,
+    IPFSError,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "ExpiredAttestationError",
     "TaxonomyError",
     "StoreError",
+    "IPFSError",
 ]

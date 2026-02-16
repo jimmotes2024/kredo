@@ -85,6 +85,16 @@ CREATE INDEX IF NOT EXISTS idx_attestations_domain ON attestations(domain);
 CREATE INDEX IF NOT EXISTS idx_attestations_type ON attestations(type);
 CREATE INDEX IF NOT EXISTS idx_revocations_attestation ON revocations(attestation_id);
 CREATE INDEX IF NOT EXISTS idx_disputes_warning ON disputes(warning_id);
+
+CREATE TABLE IF NOT EXISTS ipfs_pins (
+    cid TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL,
+    document_type TEXT NOT NULL,
+    pinned_at TEXT NOT NULL,
+    provider TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ipfs_pins_document ON ipfs_pins(document_id);
 """
 
 
@@ -390,6 +400,60 @@ class KredoStore:
             "SELECT raw_json FROM disputes WHERE warning_id = ?", (warning_id,)
         ).fetchall()
         return [json.loads(r["raw_json"]) for r in rows]
+
+    def get_revocation(self, rev_id: str) -> Optional[dict]:
+        """Get a revocation by ID. Returns parsed JSON or None."""
+        row = self._conn.execute(
+            "SELECT raw_json FROM revocations WHERE id = ?", (rev_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row["raw_json"])
+
+    def get_dispute(self, disp_id: str) -> Optional[dict]:
+        """Get a dispute by ID. Returns parsed JSON or None."""
+        row = self._conn.execute(
+            "SELECT raw_json FROM disputes WHERE id = ?", (disp_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row["raw_json"])
+
+    # --- IPFS Pins ---
+
+    def save_ipfs_pin(self, cid: str, document_id: str, document_type: str, provider: str) -> None:
+        """Record an IPFS pin for a document."""
+        try:
+            self._conn.execute(
+                """INSERT OR REPLACE INTO ipfs_pins
+                   (cid, document_id, document_type, pinned_at, provider)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (cid, document_id, document_type, _now_iso(), provider),
+            )
+            self._conn.commit()
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to save IPFS pin: {e}") from e
+
+    def get_ipfs_cid(self, document_id: str) -> Optional[str]:
+        """Get the CID for a document, or None if not pinned."""
+        row = self._conn.execute(
+            "SELECT cid FROM ipfs_pins WHERE document_id = ?", (document_id,)
+        ).fetchone()
+        return row["cid"] if row else None
+
+    def get_ipfs_pin(self, cid: str) -> Optional[dict]:
+        """Get pin metadata by CID."""
+        row = self._conn.execute(
+            "SELECT * FROM ipfs_pins WHERE cid = ?", (cid,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_ipfs_pins(self) -> list[dict]:
+        """List all IPFS pins."""
+        rows = self._conn.execute(
+            "SELECT * FROM ipfs_pins ORDER BY pinned_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     # --- Import/Export ---
 

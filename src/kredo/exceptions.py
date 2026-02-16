@@ -27,3 +27,7 @@ class TaxonomyError(KredoError):
 
 class StoreError(KredoError):
     """SQLite storage operation failed."""
+
+
+class IPFSError(KredoError):
+    """IPFS operation failed (pin, fetch, or provider configuration)."""

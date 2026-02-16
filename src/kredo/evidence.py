@@ -45,6 +45,7 @@ _URI_PATTERNS = [
     re.compile(r"^commit:[a-f0-9]+"),
     re.compile(r"^pr:[a-zA-Z0-9/.-]+"),
     re.compile(r"^issue:[a-zA-Z0-9/.-]+"),
+    re.compile(r"^ipfs:[a-zA-Z0-9]+"),
 ]
 
 # Weights for composite score
