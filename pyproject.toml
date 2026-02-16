@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "kredo"
 dynamic = ["version"]
 description = "Portable agent attestation protocol — Ed25519-signed skill certifications"
-readme = "SCOPE.md"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [

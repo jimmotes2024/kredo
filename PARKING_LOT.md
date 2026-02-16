@@ -1,7 +1,7 @@
 # Kredo — Parking Lot
 
 *Improvement ideas, deferred work, and future features. Updated as needed.*
-*Last updated: 2026-02-15 late evening*
+*Last updated: 2026-02-16 afternoon*
 
 ---
 
@@ -26,31 +26,36 @@
 
 ---
 
-## Phase 1 — Core Protocol (Python Library + CLI)
+## Phase 1 — Core Protocol (Python Library + CLI) — COMPLETE
 
-- [ ] **Ed25519 keypair generation and management** — PyNaCl, local keystore
-- [ ] **Attestation creation** — interactive CLI + programmatic API
-- [ ] **Attestation signing** — canonical JSON serialization, Ed25519 signatures
-- [ ] **Attestation verification** — validate signature, check expiry, verify schema
-- [ ] **Behavioral warning creation** — elevated evidence requirements, dispute linking
-- [ ] **Dispute mechanism** — signed counter-responses attached to warnings
-- [ ] **Local SQLite storage** — attestation store, key management
-- [ ] **Import/export** — portable JSON attestation files
-- [ ] **Trust graph queries** — "who has attested for agent X?", basic graph traversal
-- [ ] **Evidence quality scoring** — specificity, verifiability, relevance, recency
-- [ ] **CLI tool** — `kredo create`, `kredo verify`, `kredo export`, `kredo identity`
-- [ ] **Unit tests** — schema validation, signing/verification roundtrip, edge cases
+- [x] **Ed25519 keypair generation and management** — PyNaCl, local keystore
+- [x] **Attestation creation** — interactive CLI + programmatic API
+- [x] **Attestation signing** — canonical JSON serialization, Ed25519 signatures
+- [x] **Attestation verification** — validate signature, check expiry, verify schema
+- [x] **Behavioral warning creation** — elevated evidence requirements, dispute linking
+- [x] **Dispute mechanism** — signed counter-responses attached to warnings
+- [x] **Local SQLite storage** — attestation store, key management
+- [x] **Import/export** — portable JSON attestation files
+- [x] **Trust graph queries** — "who has attested for agent X?", basic graph traversal
+- [x] **Evidence quality scoring** — specificity, verifiability, relevance, recency
+- [x] **CLI tool** — `kredo identity`, `kredo attest`, `kredo verify`, `kredo export`, etc.
+- [x] **Unit tests** — 83 tests passing
+- [x] **CLI-to-API commands** — `kredo register`, `kredo submit`, `kredo lookup`, `kredo search`
+- [x] **Published to PyPI** — `pip install kredo` (v0.2.0)
 
-## Phase 2 — Discovery Service (API + Web)
+## Phase 2 — Discovery Service (API + Web) — COMPLETE
 
-- [ ] **FastAPI REST service** — publish, query, verify attestations
-- [ ] **Agent/human registration** — pubkey + alias + type
-- [ ] **Search endpoints** — by agent, skill, domain, proficiency
-- [ ] **Trust graph visualization endpoint** — network graph data
-- [ ] **Attestation verification endpoint** — paste and verify
-- [ ] **Agent profile pages** — auto-generated from attestation history
-- [ ] **Skill taxonomy browser** — browsable, searchable
-- [ ] **Rate limiting and auth** — API keys for automated submission
+- [x] **FastAPI REST service** — 15 endpoints at api.aikredo.com
+- [x] **Agent/human registration** — pubkey + alias + type, POST /register
+- [x] **Search endpoints** — by subject, attestor, domain, skill, proficiency, type
+- [x] **Trust graph endpoints** — GET /trust/who-attested/{pubkey}, GET /trust/attested-by/{pubkey}
+- [x] **Attestation verification endpoint** — POST /verify (auto-detects type)
+- [x] **Agent profile pages** — GET /agents/{pubkey}/profile (aggregated reputation)
+- [x] **Skill taxonomy browser** — GET /taxonomy, GET /taxonomy/{domain}
+- [x] **Rate limiting** — in-memory, per-pubkey for writes, per-IP for registration
+- [x] **Revocation & disputes** — POST /revoke, POST /dispute
+- [x] **Deployed to Linode** — systemd + nginx + Let's Encrypt SSL
+- [x] **Wix skill endpoint updated** — `/_functions/skill` serves Discovery API docs
 
 ## Phase 3 — Community Platform
 
@@ -107,11 +112,29 @@
 
 ## Announcement & Growth
 
-- [ ] **Moltbook announcement post** — m/general or m/agenticengineering
+- [x] **Moltbook announcement post** — posted to m/general (2026-02-16), 12+ comments
+- [x] **pip install kredo** update posted as follow-up comment
 - [ ] **Seed Rockstars group** — initial agent recommendations
 - [ ] **Seed Introductions group** — first posts from Jim and Vanguard
 - [ ] **Invite agents from Moltbook research** — squadai, IsmanFairburn, ApexAdept, Clawdad001, Delamain, eudaemon_0
 - [ ] **Cross-post to relevant Moltbook communities**
+- [ ] **Gauge submolt interest** — m/kredo dedicated community?
+
+## Community Ideas (from Moltbook announcement thread, 2026-02-16)
+
+These ideas came from real engagement on the announcement. Worth evaluating for future phases.
+
+### Anti-Gaming & Trust Quality
+- **Attestation inflation / farming detection** (HuaJiaoJi, Muninn_) — How to prevent agents from trading attestations for mutual benefit without real evidence. Ideas: decay functions on stale attestations, corroboration requirements (multiple independent attestors), ring detection algorithms that flag circular attestation patterns.
+- **Reputation-weighted attestations** (olga-assistant) — An attestation from a highly-attested agent should carry more weight than one from a brand-new agent. The "weight of the attestor" problem.
+- **Evidence bundling** (ClaudeOpus5) — Attestations that reference the same artifact/collaboration should be linkable. Cross-referencing evidence across attestations.
+
+### Key Management
+- **Key rotation / recovery** (SB-1) — What happens when a private key is compromised or lost? Currently no mechanism. Options: threshold recovery (M-of-N key shares), key rotation with signed migration, social recovery via attestors. **Known gap — honest about this one.**
+
+### Protocol Evolution
+- **Decay functions** (HuaJiaoJi) — Attestations should lose weight over time. A skill demonstrated 2 years ago matters less than one demonstrated last week. Could integrate with evidence recency scoring.
+- **Cross-platform attestation portability** — Multiple registries recognizing the same signed attestations. Federation layer.
 
 ## Open Design Questions
 
