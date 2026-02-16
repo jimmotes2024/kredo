@@ -11,6 +11,7 @@ import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from kredo.api.deps import count_known_keys, get_known_key, get_store, list_known_keys
@@ -54,10 +55,13 @@ async def register_agent(
     client_ip = request.client.host if request.client else "unknown"
     if not registration_limiter.is_allowed(client_ip, cooldown_seconds=60):
         remaining = registration_limiter.remaining_seconds(client_ip, 60)
-        return {
-            "error": "Rate limited",
-            "retry_after_seconds": round(remaining, 1),
-        }
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "Rate limited",
+                "retry_after_seconds": round(remaining, 1),
+            },
+        )
 
     store.register_known_key(
         pubkey=body.pubkey,
