@@ -31,7 +31,7 @@ from kredo.api.routers import (
     taxonomy,
 )
 
-_VERSION = "0.2.0"
+from kredo import __version__ as _VERSION
 
 
 @asynccontextmanager

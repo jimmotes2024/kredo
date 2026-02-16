@@ -1,9 +1,12 @@
 """Kredo — Portable agent attestation protocol."""
 
-from pathlib import Path
-
-_VERSION_FILE = Path(__file__).resolve().parent.parent.parent / "VERSION"
-__version__ = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "0.0.0"
+try:
+    from importlib.metadata import version as _get_version
+    __version__ = _get_version("kredo")
+except Exception:
+    from pathlib import Path
+    _VERSION_FILE = Path(__file__).resolve().parent.parent.parent / "VERSION"
+    __version__ = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "0.0.0"
 
 from kredo.exceptions import (
     KredoError,
