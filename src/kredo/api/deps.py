@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -20,8 +21,15 @@ def get_store() -> KredoStore:
 
 
 def init_store(db_path: Optional[Path] = None) -> KredoStore:
-    """Initialize the shared store. Called from app lifespan."""
+    """Initialize the shared store. Called from app lifespan.
+
+    Respects KREDO_DB_PATH environment variable if no explicit path given.
+    """
     global _store
+    if db_path is None:
+        env_path = os.environ.get("KREDO_DB_PATH")
+        if env_path:
+            db_path = Path(env_path)
     _store = KredoStore(db_path=db_path)
     return _store
 
