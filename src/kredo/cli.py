@@ -10,7 +10,9 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from kredo import __version__
 from kredo.evidence import score_evidence
@@ -43,6 +45,7 @@ from kredo.signing import (
     verify_dispute,
     verify_revocation,
 )
+from kredo.client import KredoAPIError, KredoClient
 from kredo.store import KredoStore
 from kredo.taxonomy import get_domains, get_skills
 
@@ -540,6 +543,280 @@ def taxonomy_skills(
     table.add_column("Skill")
     for s in skills:
         table.add_row(s)
+    console.print(table)
+
+
+# --- Network Commands (Discovery API) ---
+
+_PROFICIENCY_LABELS = {
+    1: "Novice",
+    2: "Competent",
+    3: "Proficient",
+    4: "Expert",
+    5: "Authority",
+}
+
+
+def _get_client(api_url: Optional[str] = None) -> KredoClient:
+    return KredoClient(base_url=api_url)
+
+
+def _proficiency_bar(level: int) -> str:
+    """Visual proficiency bar: █████ for 5, █░░░░ for 1."""
+    filled = "█" * level
+    empty = "░" * (5 - level)
+    return filled + empty
+
+
+@app.command("register")
+def register_cmd(
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override signing identity"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Register your identity with the Discovery API."""
+    store = _get_store(db)
+    id_row = _get_signing_identity(store, identity_key)
+    store.close()
+
+    client = _get_client(api_url)
+    try:
+        result = client.register(
+            pubkey=id_row["pubkey"],
+            name=id_row["name"],
+            agent_type=id_row["type"],
+        )
+        console.print(f"[green]Registered with Discovery API:[/green]")
+        console.print(f"  Name: {result.get('name', id_row['name'])}")
+        console.print(f"  Type: {result.get('type', id_row['type'])}")
+        console.print(f"  Pubkey: {id_row['pubkey']}")
+        console.print(f"  API: {client.base_url}")
+    except KredoAPIError as e:
+        if e.status_code == 429:
+            console.print(f"[yellow]Already registered or rate limited.[/yellow] {e.message}")
+        else:
+            console.print(f"[red]Registration failed: {e}[/red]")
+            raise typer.Exit(1)
+
+
+@app.command("submit")
+def submit_cmd(
+    attestation_id: str = typer.Argument(..., help="Local attestation ID to submit"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Submit a locally-signed attestation to the Discovery API."""
+    store = _get_store(db)
+    json_str = store.export_attestation_json(attestation_id)
+    store.close()
+
+    if json_str is None:
+        console.print(f"[red]Attestation not found locally: {attestation_id}[/red]")
+        raise typer.Exit(1)
+
+    attestation = json.loads(json_str)
+    client = _get_client(api_url)
+
+    try:
+        result = client.submit_attestation(attestation)
+        console.print(f"[green]Attestation submitted to Discovery API:[/green]")
+        console.print(f"  ID: {result.get('id', attestation_id)}")
+        if "evidence_score" in result:
+            console.print(f"  Evidence score: {result['evidence_score']}")
+        console.print(f"  API: {client.base_url}")
+    except KredoAPIError as e:
+        console.print(f"[red]Submission failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("lookup")
+def lookup_cmd(
+    pubkey: Optional[str] = typer.Argument(None, help="Public key to look up (default: your own)"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override default identity for self-lookup"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Look up an agent's profile and reputation from the Discovery API."""
+    if pubkey is None:
+        store = _get_store(db)
+        id_row = _get_signing_identity(store, identity_key)
+        pubkey = id_row["pubkey"]
+        store.close()
+
+    client = _get_client(api_url)
+
+    try:
+        profile = client.get_profile(pubkey)
+    except KredoAPIError as e:
+        if e.status_code == 404:
+            console.print(f"[yellow]Agent not found on the network: {pubkey}[/yellow]")
+            console.print("Register first with: kredo register")
+        else:
+            console.print(f"[red]Lookup failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    if json_output:
+        sys.stdout.write(json.dumps(profile, indent=2, default=str) + "\n")
+        return
+
+    _render_profile(profile)
+
+
+def _render_profile(profile: dict) -> None:
+    """Render a rich reputation display for an agent profile."""
+    name = profile.get("name", "Unknown")
+    agent_type = profile.get("type", "agent")
+    pubkey = profile.get("pubkey", "")
+    registered = profile.get("registered", "")
+    if registered and "T" in registered:
+        registered = registered.split("T")[0]
+
+    # --- Header panel ---
+    header_lines = []
+    header_lines.append(f"[bold]{name}[/bold]  [dim]({agent_type})[/dim]")
+    header_lines.append(f"[dim]{pubkey}[/dim]")
+    if registered:
+        header_lines.append(f"Registered: {registered}")
+    console.print(Panel("\n".join(header_lines), title="Agent Profile", border_style="blue"))
+
+    # --- Skills ---
+    skills = profile.get("skills", [])
+    if skills:
+        console.print()
+        console.print("[bold]Skills[/bold]")
+        console.print("─" * 60)
+        for s in skills:
+            domain = s.get("domain", "")
+            specific = s.get("specific", "")
+            max_prof = s.get("max_proficiency", 0)
+            avg_prof = s.get("avg_proficiency", 0)
+            att_count = s.get("attestation_count", 0)
+            label = _PROFICIENCY_LABELS.get(max_prof, f"Level {max_prof}")
+            bar = _proficiency_bar(max_prof)
+
+            skill_name = f"{domain} / {specific}"
+            console.print(
+                f"  {skill_name:<45} {bar} {label} ({max_prof}/5)"
+            )
+            console.print(
+                f"  {'':45} [dim]{att_count} attestation{'s' if att_count != 1 else ''}[/dim]"
+            )
+    else:
+        console.print()
+        console.print("[dim]No skills attested yet.[/dim]")
+
+    # --- Reputation summary ---
+    att_counts = profile.get("attestation_count", {})
+    total = att_counts.get("total", 0)
+    by_agents = att_counts.get("by_agents", 0)
+    by_humans = att_counts.get("by_humans", 0)
+    ev_quality = profile.get("evidence_quality_avg")
+    warnings = profile.get("warnings", [])
+    active_warnings = [w for w in warnings if not w.get("is_revoked")]
+    total_disputes = sum(w.get("dispute_count", 0) for w in warnings)
+
+    console.print()
+    console.print("[bold]Reputation[/bold]")
+    console.print("─" * 60)
+    console.print(f"  Attestations: {total} total ({by_agents} by agents, {by_humans} by humans)")
+    if ev_quality is not None:
+        console.print(f"  Evidence quality: {ev_quality:.2f}")
+    else:
+        console.print("  Evidence quality: [dim]n/a[/dim]")
+    console.print(f"  Warnings: {len(active_warnings)}  ·  Disputes: {total_disputes}")
+
+    # --- Trust network ---
+    trust = profile.get("trust_network", [])
+    if trust:
+        console.print()
+        console.print("[bold]Trust Network[/bold]")
+        console.print("─" * 60)
+        for t in trust:
+            t_pubkey = t.get("pubkey", "")
+            t_type = t.get("type", "agent")
+            t_count = t.get("attestation_count_for_subject", 0)
+            t_own = t.get("attestor_own_attestation_count", 0)
+            # Truncate pubkey for display
+            short_key = t_pubkey[:20] + "..." if len(t_pubkey) > 20 else t_pubkey
+            own_label = f" ({t_own} attestation{'s' if t_own != 1 else ''} received)" if t_own > 0 else ""
+            console.print(
+                f"  {short_key} [dim]({t_type})[/dim] — "
+                f"{t_count} attestation{'s' if t_count != 1 else ''} for this member{own_label}"
+            )
+    else:
+        console.print()
+        console.print("[dim]No trust network yet.[/dim]")
+
+    console.print()
+
+
+@app.command("search")
+def search_cmd(
+    subject: Optional[str] = typer.Option(None, "--subject", help="Subject's public key"),
+    attestor: Optional[str] = typer.Option(None, "--attestor", help="Attestor's public key"),
+    domain: Optional[str] = typer.Option(None, "--domain", help="Skill domain"),
+    skill: Optional[str] = typer.Option(None, "--skill", help="Specific skill"),
+    att_type: Optional[str] = typer.Option(None, "--type", help="Attestation type"),
+    min_proficiency: Optional[int] = typer.Option(None, "--min-proficiency", help="Minimum proficiency (1-5)"),
+    include_revoked: bool = typer.Option(False, "--include-revoked", help="Include revoked attestations"),
+    limit: int = typer.Option(20, "--limit", help="Max results"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON"),
+):
+    """Search attestations on the Discovery API."""
+    client = _get_client(api_url)
+
+    try:
+        result = client.search(
+            subject=subject,
+            attestor=attestor,
+            domain=domain,
+            skill=skill,
+            att_type=att_type,
+            min_proficiency=min_proficiency,
+            include_revoked=include_revoked,
+            limit=limit,
+        )
+    except KredoAPIError as e:
+        console.print(f"[red]Search failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    if json_output:
+        sys.stdout.write(json.dumps(result, indent=2, default=str) + "\n")
+        return
+
+    attestations = result.get("attestations", [])
+    if not attestations:
+        console.print("[dim]No attestations found.[/dim]")
+        return
+
+    table = Table(title=f"Search Results ({len(attestations)} attestation{'s' if len(attestations) != 1 else ''})")
+    table.add_column("Type", width=12)
+    table.add_column("Subject")
+    table.add_column("Skill")
+    table.add_column("Prof.", width=5)
+    table.add_column("Attestor")
+    table.add_column("Issued", width=10)
+
+    for att in attestations:
+        att_type_val = att.get("type", "")
+        # Shorten type name
+        type_short = att_type_val.replace("_attestation", "").replace("_contribution", "").replace("behavioral_", "")
+        subject_name = att.get("subject", {}).get("name") or att.get("subject", {}).get("pubkey", "")[:16] + "..."
+        attestor_name = att.get("attestor", {}).get("name") or att.get("attestor", {}).get("pubkey", "")[:16] + "..."
+        skill_info = ""
+        prof_info = ""
+        if att.get("skill"):
+            skill_info = f"{att['skill'].get('domain', '')}/{att['skill'].get('specific', '')}"
+            prof_val = att["skill"].get("proficiency", 0)
+            prof_info = f"{prof_val}/5"
+        issued = att.get("issued", "")
+        if issued and "T" in issued:
+            issued = issued.split("T")[0]
+
+        table.add_row(type_short, subject_name, skill_info, prof_info, attestor_name, issued)
+
     console.print(table)
 
 

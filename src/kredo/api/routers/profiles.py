@@ -94,9 +94,12 @@ async def agent_profile(
         attestor_attestations = store.search_attestations(
             subject_pubkey=a["attestor_pubkey"]
         )
+        # Look up the attestor's actual type from known_keys
+        attestor_info = get_known_key(store, a["attestor_pubkey"])
+        attestor_type = attestor_info["type"] if attestor_info else "agent"
         trust_network.append({
             "pubkey": a["attestor_pubkey"],
-            "type": a.get("type", "agent"),
+            "type": attestor_type,
             "attestation_count_for_subject": a["attestation_count"],
             "attestor_own_attestation_count": len(attestor_attestations),
         })
