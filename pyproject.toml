@@ -8,10 +8,21 @@ dynamic = ["version"]
 description = "Portable agent attestation protocol — Ed25519-signed skill certifications"
 readme = "SCOPE.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Jim Motes"},
     {name = "Vanguard"},
+]
+keywords = ["attestation", "ed25519", "trust", "reputation", "agents", "ai-agents", "cryptography"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "pynacl>=1.5.0",
@@ -21,6 +32,12 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
 ]
+
+[project.urls]
+Homepage = "https://aikredo.com"
+Documentation = "https://aikredo.com/_functions/skill"
+Repository = "https://github.com/jimmotes2024/kredo"
+"Discovery API" = "https://api.aikredo.com"
 
 [project.optional-dependencies]
 dev = [
