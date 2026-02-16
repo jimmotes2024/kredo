@@ -38,7 +38,7 @@ version = {file = "VERSION"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-kredo = ["../data/*.json"]
+"kredo.data" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

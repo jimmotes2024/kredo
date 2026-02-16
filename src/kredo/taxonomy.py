@@ -4,20 +4,19 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from pathlib import Path
+from importlib import resources
 
 from kredo.exceptions import TaxonomyError
-
-_TAXONOMY_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "taxonomy_v1.json"
 
 
 @lru_cache(maxsize=1)
 def _load_taxonomy() -> dict:
-    """Load taxonomy from bundled JSON file."""
-    if not _TAXONOMY_FILE.exists():
-        raise TaxonomyError(f"Taxonomy file not found: {_TAXONOMY_FILE}")
-    with open(_TAXONOMY_FILE) as f:
-        return json.load(f)
+    """Load taxonomy from bundled package data."""
+    try:
+        ref = resources.files("kredo.data").joinpath("taxonomy_v1.json")
+        return json.loads(ref.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise TaxonomyError(f"Failed to load taxonomy: {e}") from e
 
 
 def get_domains() -> list[str]:
