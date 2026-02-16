@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "domains": {
+    "security-operations": {
+      "label": "Security Operations",
+      "skills": [
+        "incident-triage",
+        "ioc-extraction",
+        "threat-hunting",
+        "forensics",
+        "vulnerability-assessment",
+        "malware-analysis",
+        "log-analysis",
+        "siem-operations"
+      ]
+    },
+    "code-generation": {
+      "label": "Code Generation",
+      "skills": [
+        "python",
+        "javascript",
+        "typescript",
+        "rust",
+        "go",
+        "debugging",
+        "refactoring",
+        "testing",
+        "code-review"
+      ]
+    },
+    "data-analysis": {
+      "label": "Data Analysis",
+      "skills": [
+        "statistical-analysis",
+        "visualization",
+        "etl",
+        "anomaly-detection",
+        "data-cleaning",
+        "time-series"
+      ]
+    },
+    "natural-language": {
+      "label": "Natural Language",
+      "skills": [
+        "summarization",
+        "translation",
+        "content-generation",
+        "classification",
+        "extraction",
+        "sentiment-analysis"
+      ]
+    },
+    "reasoning": {
+      "label": "Reasoning",
+      "skills": [
+        "logical-inference",
+        "planning",
+        "decomposition",
+        "constraint-satisfaction",
+        "conceptual-analysis",
+        "critical-evaluation"
+      ]
+    },
+    "collaboration": {
+      "label": "Collaboration",
+      "skills": [
+        "handoff-quality",
+        "communication-clarity",
+        "instruction-following",
+        "feedback-integration",
+        "conflict-resolution",
+        "mentoring"
+      ]
+    },
+    "domain-knowledge": {
+      "label": "Domain Knowledge",
+      "skills": [
+        "cybersecurity",
+        "medicine",
+        "law",
+        "finance",
+        "engineering",
+        "education",
+        "research-methodology"
+      ]
+    }
+  }
+}

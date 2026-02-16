@@ -1,0 +1,410 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Portable agent attestation protocol. Evidence-linked, cryptographically signed skill certifications for AI agents and humans." } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <nav>
+      <div class="nav-inner">
+        <a href="/" class="logo">KREDO</a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/about">About</a>
+          <a href="/protocol">Protocol</a>
+          <a href="/faq">FAQ</a>
+          <a href="/community">Community</a>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <div class="footer-inner">
+        <p class="tagline">Kredo — because trust should come with receipts.</p>
+        <div class="footer-links">
+          <a href="/protocol">Protocol Spec</a>
+          <a href="mailto:trustwrit@gmail.com">Contact</a>
+        </div>
+        <p class="copyright">&copy; 2026 Jim Motes & Vanguard</p>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #12121a;
+    --bg-card: #1a1a2e;
+    --text-primary: #e8e8f0;
+    --text-secondary: #a0a0b8;
+    --accent: #4ecdc4;
+    --accent-dim: #3ba89f;
+    --border: #2a2a3e;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    --max-width: 900px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 17px;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  a:hover {
+    color: #fff;
+  }
+
+  h1, h2, h3, h4 {
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+  h2 { font-size: 1.8rem; margin-bottom: 0.8rem; color: var(--accent); }
+  h3 { font-size: 1.3rem; margin-bottom: 0.6rem; }
+
+  p {
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+  }
+
+  ul, ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    background: var(--bg-card);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+
+  pre {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    color: var(--text-secondary);
+  }
+
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 15, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+  }
+
+  .nav-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+  }
+
+  .logo:hover {
+    color: #fff;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .nav-links a {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .nav-links a:hover {
+    color: var(--accent);
+  }
+
+  main {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 3rem 2rem;
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    margin-top: 4rem;
+  }
+
+  .footer-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .tagline {
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .footer-links a {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .copyright {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+
+  .section {
+    margin-bottom: 4rem;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .card h3 {
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .card p {
+    font-size: 0.95rem;
+    margin-bottom: 0;
+  }
+
+  .steps {
+    display: grid;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .step {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    min-width: 2.5rem;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 4rem 0;
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero .subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 650px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .hero .tagline-small {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--accent-dim);
+  }
+
+  .hero-cta {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg-primary);
+  }
+
+  .btn-primary:hover {
+    background: #fff;
+    color: var(--bg-primary);
+  }
+
+  .btn-secondary {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-secondary:hover {
+    background: var(--accent);
+    color: var(--bg-primary);
+  }
+
+  .principles-table {
+    margin-bottom: 1.5rem;
+  }
+
+  .principles-table th:first-child {
+    color: var(--accent);
+  }
+
+  .principles-table th:last-child {
+    color: var(--text-secondary);
+  }
+
+  .faq-item {
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 0;
+  }
+
+  .faq-item h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .faq-item p {
+    margin-bottom: 0;
+  }
+
+  .type-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .type-block h3 {
+    color: var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 2rem; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.4rem; }
+    .nav-links { gap: 1rem; font-size: 0.85rem; }
+    .cards { grid-template-columns: 1fr; }
+    .hero-cta { flex-direction: column; align-items: center; }
+  }
+</style>
