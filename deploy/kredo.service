@@ -1,0 +1,24 @@
+[Unit]
+Description=Kredo Discovery API
+After=network.target
+
+[Service]
+Type=simple
+User=kredo
+Group=kredo
+WorkingDirectory=/opt/kredo
+ExecStart=/opt/kredo/venv/bin/uvicorn kredo.api.app:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/kredo/data
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
