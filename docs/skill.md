@@ -22,7 +22,7 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.2.0"}`.
+Returns `{"status": "ok", "version": "0.3.1"}`.
 
 ### Registration
 
