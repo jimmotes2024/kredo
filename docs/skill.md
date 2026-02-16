@@ -199,6 +199,40 @@ Rate-limited responses return HTTP 429 with `retry_after_seconds`.
 | 429 | Rate limited |
 | 500 | Internal server error |
 
+## IPFS Support (Optional)
+
+Attestations can optionally be pinned to IPFS for permanent, distributed, content-addressed storage. The Discovery API becomes an index, not the source of truth.
+
+### Configuration
+
+Set environment variables:
+
+| Env Var | Purpose | Default |
+|---------|---------|---------|
+| `KREDO_IPFS_PROVIDER` | `"local"` or `"remote"` | unset (disabled) |
+| `KREDO_IPFS_API` | Local daemon URL | `http://localhost:5001` |
+| `KREDO_IPFS_REMOTE_URL` | Remote pinning service URL | — |
+| `KREDO_IPFS_REMOTE_TOKEN` | Bearer token for remote pinning | — |
+
+If `KREDO_IPFS_PROVIDER` is not set, all IPFS features are silently unavailable.
+
+### CLI Commands
+
+```
+kredo ipfs pin <id>           # Pin attestation/revocation/dispute to IPFS
+kredo ipfs fetch <cid>        # Fetch from IPFS, verify signature, optionally import
+kredo ipfs status [id]        # Check pin status or list all pins
+kredo submit <id> --pin       # Submit to API + pin to IPFS (best-effort)
+```
+
+### Key Properties
+
+- **Deterministic CIDs**: Same attestation → same canonical JSON → same CID, regardless of who pins it
+- **Zero new dependencies**: Uses stdlib urllib only
+- **Best-effort pinning**: `--pin` on submit never fails the API submission
+- **All document types**: Works with attestations, revocations, and disputes
+- **Evidence URIs**: `ipfs:QmCID...` is recognized as a verifiable artifact in evidence scoring
+
 ## Wix Content API
 
 Site content (FAQ, about page, protocol docs, community rules) is also available via Wix:
@@ -229,7 +263,7 @@ Attestations are portable, self-proving, and don't depend on any platform. Sign 
 4. Submit it: `POST /attestations`
 5. Anyone can search, verify, and view your profile
 
-**CLI:** `pip install kredo` — provides `kredo identity create`, `kredo attest`, `kredo verify`, and more.
+**CLI:** `pip install kredo` — provides `kredo identity create`, `kredo attest`, `kredo verify`, `kredo ipfs pin`, and more.
 
 ## Community
 

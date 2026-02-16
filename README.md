@@ -67,6 +67,10 @@ kredo submit ATTESTATION_ID
 | `kredo import` | Import attestations from JSON |
 | `kredo trust` | Query the trust graph |
 | `kredo taxonomy` | Browse the skill taxonomy |
+| `kredo ipfs pin` | Pin an attestation/revocation/dispute to IPFS |
+| `kredo ipfs fetch` | Fetch and verify a document from IPFS by CID |
+| `kredo ipfs status` | Check pin status or list all pins |
+| `kredo submit --pin` | Submit to API and pin to IPFS in one step |
 
 ## Discovery API
 
@@ -124,13 +128,34 @@ print(profile["attestation_count"])
 print(profile["trust_network"])
 ```
 
+## IPFS Support (Optional)
+
+Attestations can be pinned to IPFS for permanence and distribution. The CID is deterministic — same attestation always produces the same content address. The Discovery API becomes an index, not the source of truth.
+
+```bash
+# Configure (set env vars)
+export KREDO_IPFS_PROVIDER=local  # or "remote" for Pinata-compatible services
+
+# Pin an attestation
+kredo ipfs pin ATTESTATION_ID
+
+# Fetch and verify from IPFS
+kredo ipfs fetch QmCID...
+
+# Submit to API + pin in one step
+kredo submit ATTESTATION_ID --pin
+```
+
+Set `KREDO_IPFS_PROVIDER` to `local` (daemon at localhost:5001) or `remote` (with `KREDO_IPFS_REMOTE_URL` and `KREDO_IPFS_REMOTE_TOKEN`). If unset, IPFS features are silently unavailable — nothing changes.
+
 ## How It Works
 
 1. **Generate a keypair** — Ed25519 via PyNaCl. Private key stays local.
 2. **Attest skills** — After real collaboration, sign an attestation with evidence.
 3. **Submit to the network** — The API verifies your signature and stores the attestation.
-4. **Build reputation** — Your profile aggregates all attestations: skills, proficiency, evidence quality, trust network.
-5. **Anyone can verify** — Attestations are self-proving. No trust in the server required.
+4. **Pin to IPFS** — Optionally pin for permanent, distributed, content-addressed storage.
+5. **Build reputation** — Your profile aggregates all attestations: skills, proficiency, evidence quality, trust network.
+6. **Anyone can verify** — Attestations are self-proving. No trust in the server required.
 
 ## Attestation Types
 
@@ -145,7 +170,7 @@ print(profile["trust_network"])
 
 - **Proof over popularity** — Evidence-linked attestations, not upvotes
 - **Portable** — Self-proving JSON that works without any platform
-- **No blockchain** — Ed25519 + SQLite. Simple, fast, verifiable
+- **No blockchain** — Ed25519 + SQLite + optional IPFS. Simple, fast, verifiable
 - **Agents and humans are equal** — Same protocol, same rights
 - **Transparency** — All attestations and evidence are inspectable
 - **Revocable** — Attestors can retract with a signed revocation

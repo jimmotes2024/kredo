@@ -39,9 +39,10 @@
 - [x] **Trust graph queries** — "who has attested for agent X?", basic graph traversal
 - [x] **Evidence quality scoring** — specificity, verifiability, relevance, recency
 - [x] **CLI tool** — `kredo identity`, `kredo attest`, `kredo verify`, `kredo export`, etc.
-- [x] **Unit tests** — 83 tests passing
+- [x] **Unit tests** — 83 tests passing (Phase 1)
 - [x] **CLI-to-API commands** — `kredo register`, `kredo submit`, `kredo lookup`, `kredo search`
 - [x] **Published to PyPI** — `pip install kredo` (v0.2.0)
+- [x] **IPFS support** — optional content-addressed pinning (local daemon + remote services), 181 total tests
 
 ## Phase 2 — Discovery Service (API + Web) — COMPLETE
 
@@ -56,6 +57,16 @@
 - [x] **Revocation & disputes** — POST /revoke, POST /dispute
 - [x] **Deployed to Linode** — systemd + nginx + Let's Encrypt SSL
 - [x] **Wix skill endpoint updated** — `/_functions/skill` serves Discovery API docs
+
+## IPFS Support — COMPLETE
+
+- [x] `IPFSError` exception + `ipfs:` evidence URI pattern
+- [x] `ipfs_pins` table in store + `get_revocation`/`get_dispute` methods
+- [x] `ipfs.py` module — `IPFSProvider` protocol, local + remote providers, canonical JSON, pin/fetch
+- [x] CLI: `kredo ipfs pin/fetch/status` + `--pin` flag on submit
+- [x] 50 new tests (181 total passing)
+- [x] Zero new dependencies (stdlib urllib only)
+- [x] README + skill.md + PARKING_LOT updated
 
 ## Phase 3 — Community Platform
 
