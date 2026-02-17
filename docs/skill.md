@@ -22,7 +22,7 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.3.1"}`.
+Returns `{"status": "ok", "version": "0.4.0"}`.
 
 ### Registration
 
@@ -121,6 +121,29 @@ GET /trust/attested-by/{pubkey}
 ```
 All subjects attested by a given attestor, with attestation counts.
 
+### Trust Analysis
+
+```
+GET /trust/analysis/{pubkey}
+```
+Full trust analysis for an agent: reputation score, per-attestation weights (evidence quality, decay, attestor reputation, ring discount), ring involvement, and weighted skill aggregation.
+
+```
+GET /trust/rings
+```
+Network-wide ring detection report. Finds mutual attestation pairs (A↔B) and cliques (3+ agents all attesting each other). Rings are flagged and downweighted, not blocked.
+
+```
+GET /trust/network-health
+```
+Aggregate network statistics: total agents, directed edges, mutual pair count, clique count, ring participation rate.
+
+**Anti-gaming features (v0.4.0):**
+- Attestation decay: `2^(-days/180)` half-life — older attestations carry less weight
+- Attestor reputation: recursive (depth 3), weighted by the attestor's own attestations
+- Ring detection: mutual pairs discounted 0.5×, cliques (3+) discounted 0.3×
+- Effective weight: `proficiency × evidence × decay × attestor_rep × ring_discount`
+
 ### Agent Profiles
 
 ```
@@ -128,11 +151,12 @@ GET /agents/{pubkey}/profile
 ```
 Comprehensive profile computed from all attestations:
 - Identity info (name, type, registration date)
-- Skills with proficiency (aggregated across attestations)
+- Skills with proficiency (raw and weighted averages)
 - Attestation counts (by agent vs human attestors)
 - Behavioral warnings and dispute counts
 - Evidence quality average
 - Trust network (who attested, and how well-attested are they)
+- Trust analysis (reputation score, ring flags)
 
 ### Taxonomy
 

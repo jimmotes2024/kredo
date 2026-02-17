@@ -1,7 +1,7 @@
 # Kredo — Parking Lot
 
 *Improvement ideas, deferred work, and future features. Updated as needed.*
-*Last updated: 2026-02-16 afternoon*
+*Last updated: 2026-02-16 evening*
 
 ---
 
@@ -67,6 +67,18 @@
 - [x] 50 new tests (181 total passing)
 - [x] Zero new dependencies (stdlib urllib only)
 - [x] README + skill.md + PARKING_LOT updated
+
+## Anti-Gaming Layer — COMPLETE (v0.4.0)
+
+- [x] **Ring detection** — mutual pairs (A↔B) and cliques (3+) via Bron-Kerbosch algorithm
+- [x] **Reputation-weighted attestations** — recursive attestor reputation (depth 3), `1 - exp(-total)` normalization
+- [x] **Decay functions** — `2^(-days/180)` exponential half-life on attestation age
+- [x] **Effective weight formula** — `proficiency × evidence × decay × attestor_rep × ring_discount`
+- [x] **Ring discounts** — mutual pair 0.5×, clique 0.3×, flagged not blocked
+- [x] **Profile integration** — `weighted_avg_proficiency` + `trust_analysis` section on profiles
+- [x] **3 new API endpoints** — `/trust/analysis/{pubkey}`, `/trust/rings`, `/trust/network-health`
+- [x] **37 new tests** (218 total passing)
+- [x] Zero new dependencies — stdlib `math`, `datetime`, `dataclasses` only
 
 ## Phase 3 — Community Platform
 
@@ -135,17 +147,17 @@
 
 These ideas came from real engagement on the announcement. Worth evaluating for future phases.
 
-### Anti-Gaming & Trust Quality
-- **Attestation inflation / farming detection** (HuaJiaoJi, Muninn_) — How to prevent agents from trading attestations for mutual benefit without real evidence. Ideas: decay functions on stale attestations, corroboration requirements (multiple independent attestors), ring detection algorithms that flag circular attestation patterns.
-- **Reputation-weighted attestations** (olga-assistant) — An attestation from a highly-attested agent should carry more weight than one from a brand-new agent. The "weight of the attestor" problem.
-- **Evidence bundling** (ClaudeOpus5) — Attestations that reference the same artifact/collaboration should be linkable. Cross-referencing evidence across attestations.
+### Anti-Gaming & Trust Quality — ADDRESSED (v0.4.0)
+- ~~**Attestation inflation / farming detection** (HuaJiaoJi, Muninn_)~~ — **BUILT:** Ring detection (mutual pairs + cliques), decay functions, reputation weighting. Remaining: corroboration requirements (multiple independent attestors).
+- ~~**Reputation-weighted attestations** (olga-assistant)~~ — **BUILT:** Recursive attestor reputation, depth-limited, cycle-safe. Attestor weight = `0.1 + 0.9 × reputation`.
+- **Evidence bundling** (ClaudeOpus5) — Attestations that reference the same artifact/collaboration should be linkable. Cross-referencing evidence across attestations. *Still open.*
 
 ### Key Management
 - **Key rotation / recovery** (SB-1) — What happens when a private key is compromised or lost? Currently no mechanism. Options: threshold recovery (M-of-N key shares), key rotation with signed migration, social recovery via attestors. **Known gap — honest about this one.**
 
 ### Protocol Evolution
-- **Decay functions** (HuaJiaoJi) — Attestations should lose weight over time. A skill demonstrated 2 years ago matters less than one demonstrated last week. Could integrate with evidence recency scoring.
-- **Cross-platform attestation portability** — Multiple registries recognizing the same signed attestations. Federation layer.
+- ~~**Decay functions** (HuaJiaoJi)~~ — **BUILT (v0.4.0):** `2^(-days/180)` exponential half-life. Integrated with evidence recency scoring.
+- **Cross-platform attestation portability** — Multiple registries recognizing the same signed attestations. Federation layer. *Still open.*
 
 ## Open Design Questions
 
