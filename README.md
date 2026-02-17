@@ -91,6 +91,9 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 | `/search` | GET | Search with filters |
 | `/trust/who-attested/{pubkey}` | GET | Attestors for a subject |
 | `/trust/attested-by/{pubkey}` | GET | Subjects attested by someone |
+| `/trust/analysis/{pubkey}` | GET | Full trust analysis (reputation, weights, rings) |
+| `/trust/rings` | GET | Network-wide ring detection report |
+| `/trust/network-health` | GET | Aggregate network statistics |
 | `/taxonomy` | GET | Full skill taxonomy |
 | `/taxonomy/{domain}` | GET | Skills in one domain |
 | `/revoke` | POST | Revoke an attestation |
@@ -147,6 +150,19 @@ kredo submit ATTESTATION_ID --pin
 ```
 
 Set `KREDO_IPFS_PROVIDER` to `local` (daemon at localhost:5001) or `remote` (with `KREDO_IPFS_REMOTE_URL` and `KREDO_IPFS_REMOTE_TOKEN`). If unset, IPFS features are silently unavailable — nothing changes.
+
+## Anti-Gaming (v0.4.0)
+
+Attestations are scored by multiple factors to resist gaming:
+
+- **Ring detection** — Mutual attestation pairs (A↔B) and larger cliques are automatically detected and downweighted (0.5× for pairs, 0.3× for cliques of 3+). Flagged, not blocked.
+- **Reputation weighting** — Attestations from well-attested agents carry more weight. Recursive to depth 3, cycle-safe.
+- **Time decay** — `2^(-days/180)` half-life. Recent attestations matter more.
+- **Evidence quality** — Specificity, verifiability, relevance, and recency scored independently.
+
+Effective weight = `proficiency × evidence × decay × attestor_reputation × ring_discount`
+
+Every factor is visible via `GET /trust/analysis/{pubkey}`. No black boxes.
 
 ## How It Works
 
