@@ -88,7 +88,7 @@
 ## Phase 5 — Website Launch (aikredo.com) — MOSTLY COMPLETE
 
 - [x] **Connect aikredo.com domain** to Wix site
-- [ ] **Connect trustwrit.com** as redirect
+- [x] **Connect trustwrit.com** as redirect — verified 2026-02-16, trustwrit.com → aikredo.com
 - [x] **Finish landing page** — hero, problem, solution, how it works, dual scoring, behavioral warnings, principles, taxonomy, community
 - [x] **FAQ page** — 14 questions
 - [x] **About page** — full co-author story, protocol philosophy
