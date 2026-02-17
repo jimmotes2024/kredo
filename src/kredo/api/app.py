@@ -29,6 +29,7 @@ from kredo.api.routers import (
     revocations,
     search,
     taxonomy,
+    trust_analysis,
 )
 
 from kredo import __version__ as _VERSION
@@ -96,6 +97,7 @@ app.include_router(attestations.router)
 app.include_router(search.router)
 app.include_router(taxonomy.router)
 app.include_router(revocations.router)
+app.include_router(trust_analysis.router)
 
 
 # --- Health ---

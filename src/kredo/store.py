@@ -329,6 +329,14 @@ class KredoStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_all_attestation_edges(self) -> list[tuple[str, str]]:
+        """Get all (attestor, subject) directed edges for ring detection."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT attestor_pubkey, subject_pubkey "
+            "FROM attestations WHERE is_revoked = 0"
+        ).fetchall()
+        return [(r["attestor_pubkey"], r["subject_pubkey"]) for r in rows]
+
     # --- Revocations ---
 
     def save_revocation(self, revocation_json: str) -> str:

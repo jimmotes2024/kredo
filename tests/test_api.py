@@ -661,3 +661,96 @@ class TestDisputes:
         signed = sign_dispute(disp, sk_b)
         r = client.post("/dispute", json=json.loads(signed.model_dump_json()))
         assert r.status_code == 404
+
+
+# ===== Trust Analysis =====
+
+class TestTrustAnalysis:
+    def test_analysis_unknown_agent(self, client, pk_a):
+        """Analysis of unknown agent returns zero reputation."""
+        r = client.get(f"/trust/analysis/{pk_a}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["pubkey"] == pk_a
+        assert data["reputation_score"] == 0.0
+        assert data["attestation_weights"] == []
+        assert data["rings_involved"] == []
+
+    def test_analysis_with_attestation(self, client, sk_a, pk_a, pk_b):
+        """Agent with attestation has nonzero analysis."""
+        att_data = _make_signed_attestation(sk_a, pk_b)
+        client.post("/attestations", json=att_data)
+
+        r = client.get(f"/trust/analysis/{pk_b}")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["reputation_score"] > 0
+        assert len(data["attestation_weights"]) == 1
+        assert data["attestation_weights"][0]["attestor_reputation"] == 0.0
+        assert "unattested_attestor" in data["attestation_weights"][0]["flags"]
+        assert len(data["weighted_skills"]) == 1
+        assert data["analysis_timestamp"] is not None
+
+    def test_rings_empty(self, client):
+        """Rings endpoint on empty DB."""
+        r = client.get("/trust/rings")
+        assert r.status_code == 200
+        assert r.json()["ring_count"] == 0
+        assert r.json()["rings"] == []
+
+    def test_rings_with_mutual_pair(self, client, sk_a, sk_b, pk_a, pk_b):
+        """Mutual attestation pair shows up in rings."""
+        # A attests B
+        att1 = _make_signed_attestation(sk_a, pk_b)
+        client.post("/attestations", json=att1)
+
+        # B attests A
+        submission_limiter._timestamps.clear()
+        att2 = _make_signed_attestation(sk_b, pk_a)
+        client.post("/attestations", json=att2)
+
+        r = client.get("/trust/rings")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["ring_count"] == 1
+        assert data["rings"][0]["ring_type"] == "mutual_pair"
+        assert data["rings"][0]["size"] == 2
+
+    def test_network_health_empty(self, client):
+        """Network health on empty DB."""
+        r = client.get("/trust/network-health")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total_agents_in_graph"] == 0
+        assert data["total_directed_edges"] == 0
+
+    def test_network_health_with_data(self, client, sk_a, pk_b):
+        """Network health with attestation data."""
+        att_data = _make_signed_attestation(sk_a, pk_b)
+        client.post("/attestations", json=att_data)
+
+        r = client.get("/trust/network-health")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total_agents_in_graph"] == 2
+        assert data["total_directed_edges"] == 1
+
+    def test_profile_includes_trust_analysis(self, client, sk_a, pk_b):
+        """Profile endpoint now includes trust_analysis and weighted_avg_proficiency."""
+        client.post("/register", json={"pubkey": pk_b, "name": "Subject", "type": "agent"})
+        att_data = _make_signed_attestation(sk_a, pk_b)
+        client.post("/attestations", json=att_data)
+
+        r = client.get(f"/agents/{pk_b}/profile")
+        assert r.status_code == 200
+        data = r.json()
+
+        # Trust analysis section present
+        assert "trust_analysis" in data
+        assert "reputation_score" in data["trust_analysis"]
+        assert data["trust_analysis"]["reputation_score"] > 0
+        assert "ring_flags" in data["trust_analysis"]
+
+        # Skills include weighted_avg_proficiency
+        assert len(data["skills"]) == 1
+        assert "weighted_avg_proficiency" in data["skills"][0]

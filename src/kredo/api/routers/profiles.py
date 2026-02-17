@@ -15,6 +15,10 @@ from kredo.api.deps import get_known_key, get_store
 from kredo.evidence import score_evidence
 from kredo.models import AttestationType, Evidence
 from kredo.store import KredoStore
+from kredo.trust_analysis import (
+    analyze_agent,
+    detect_all_rings,
+)
 
 router = APIRouter(tags=["profiles"])
 
@@ -104,6 +108,22 @@ async def agent_profile(
             "attestor_own_attestation_count": len(attestor_attestations),
         })
 
+    # Trust analysis: reputation score, ring flags, weighted skills
+    analysis = analyze_agent(store, pubkey)
+    ring_flags = [
+        {"ring_type": r.ring_type, "members": r.members, "size": r.size}
+        for r in analysis.rings_involved
+    ]
+
+    # Enrich skills with weighted_avg_proficiency from trust analysis
+    weighted_skill_map = {
+        f"{ws['domain']}:{ws['specific']}": ws.get("weighted_avg_proficiency", 0)
+        for ws in analysis.weighted_skills
+    }
+    for skill in skills:
+        key = f"{skill['domain']}:{skill['specific']}"
+        skill["weighted_avg_proficiency"] = weighted_skill_map.get(key, skill["avg_proficiency"])
+
     return {
         "pubkey": pubkey,
         "name": agent["name"],
@@ -119,6 +139,10 @@ async def agent_profile(
         "warnings": warnings,
         "evidence_quality_avg": avg_evidence_quality,
         "trust_network": trust_network,
+        "trust_analysis": {
+            "reputation_score": analysis.reputation_score,
+            "ring_flags": ring_flags,
+        },
     }
 
 
