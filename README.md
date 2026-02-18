@@ -131,6 +131,36 @@ print(profile["attestation_count"])
 print(profile["trust_network"])
 ```
 
+## LangChain Integration
+
+For LangChain developers building multi-agent pipelines:
+
+```bash
+pip install langchain-kredo
+```
+
+```python
+from langchain_kredo import KredoSigningClient, KredoTrustGate, KredoCheckTrustTool
+
+# Connect with signing capability
+client = KredoSigningClient(signing_key="YOUR_HEX_SEED")
+
+# Trust gate — policy enforcement for agent pipelines
+gate = KredoTrustGate(client, min_score=0.3, block_warned=True)
+result = gate.check("ed25519:AGENT_PUBKEY")
+
+# Select best agent for a task (ranks by reputation + diversity + domain proficiency)
+best = gate.select_best(candidate_pubkeys, domain="security-operations", skill="incident-triage")
+
+# Build-vs-buy: should I delegate or handle it myself?
+delegate = gate.should_delegate(candidates, domain="code-generation", self_proficiency=2)
+
+# LangChain tools — drop into any agent toolbox
+tools = [KredoCheckTrustTool(client=client)]
+```
+
+Includes 4 LangChain tools, a callback handler for automatic evidence collection, and trust gate with composite ranking. See [langchain-kredo on PyPI](https://pypi.org/project/langchain-kredo/).
+
 ## IPFS Support (Optional)
 
 Attestations can be pinned to IPFS for permanence and distribution. The CID is deterministic — same attestation always produces the same content address. The Discovery API becomes an index, not the source of truth.

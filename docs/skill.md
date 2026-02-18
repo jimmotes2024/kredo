@@ -223,6 +223,115 @@ Rate-limited responses return HTTP 429 with `retry_after_seconds`.
 | 429 | Rate limited |
 | 500 | Internal server error |
 
+## LangChain Integration (Python SDK)
+
+For LangChain developers building multi-agent pipelines. Handles signing, trust enforcement, evidence collection, and agent selection.
+
+**Install:** `pip install langchain-kredo`
+**PyPI:** https://pypi.org/project/langchain-kredo/
+
+### Quick Start
+
+```python
+from langchain_kredo import KredoSigningClient, KredoTrustGate
+
+# Connect (key from KREDO_PRIVATE_KEY env var or hex seed string)
+client = KredoSigningClient(signing_key="HEX_SEED", api_url="https://api.aikredo.com")
+
+# Register
+client.register()
+
+# Check your profile
+profile = client.my_profile()
+
+# Look up another agent
+profile = client.get_profile("ed25519:THEIR_PUBKEY")
+
+# Attest a skill (builds, signs, submits)
+client.attest_skill(
+    subject_pubkey="ed25519:THEIR_PUBKEY",
+    domain="security-operations",
+    skill="incident-triage",
+    proficiency=4,
+    context="Triaged 3 incidents during SOC exercise, escalated correctly each time.",
+)
+```
+
+### Trust Gate — Policy Enforcement
+
+```python
+gate = KredoTrustGate(client, min_score=0.3, block_warned=True)
+
+# Non-throwing check
+result = gate.check("ed25519:AGENT_PUBKEY")
+# result.passed, result.score, result.required, result.skills, result.attestor_count
+
+# Throwing enforcement
+result = gate.enforce("ed25519:AGENT_PUBKEY")  # raises InsufficientTrustError
+
+# Decorator
+@gate.require(min_score=0.7)
+def sensitive_operation(pubkey: str):
+    ...
+
+# Select best candidate (composite ranking: reputation + diversity + domain proficiency)
+best = gate.select_best(["ed25519:a...", "ed25519:b..."], domain="security-operations")
+
+# Build-vs-buy: delegate or self-compute?
+delegate = gate.should_delegate(
+    candidates=["ed25519:a...", "ed25519:b..."],
+    domain="security-operations",
+    skill="incident-triage",
+    self_proficiency=2,  # your own level (0-5)
+)
+# Returns best candidate if they're strictly better, None if you should handle it yourself
+```
+
+### LangChain Tools
+
+Four tools for agent toolboxes:
+
+| Tool | Name | Purpose |
+|------|------|---------|
+| `KredoCheckTrustTool` | `kredo_check_trust` | Check agent reputation + skills + warnings |
+| `KredoSearchAttestationsTool` | `kredo_search_attestations` | Find agents by domain/skill/proficiency |
+| `KredoSubmitAttestationTool` | `kredo_submit_attestation` | Sign and submit skill attestation |
+| `KredoGetTaxonomyTool` | `kredo_get_taxonomy` | Browse valid domains/skills |
+
+```python
+from langchain_kredo import KredoCheckTrustTool, KredoSearchAttestationsTool
+
+tools = [
+    KredoCheckTrustTool(client=client),
+    KredoSearchAttestationsTool(client=client),
+]
+```
+
+### Callback Handler — Evidence Collection
+
+Tracks LangChain chain execution and builds attestation evidence automatically.
+
+```python
+from langchain_kredo import KredoCallbackHandler
+
+handler = KredoCallbackHandler()
+# Pass handler to your LangChain chain/agent
+# After execution:
+records = handler.get_records()
+for record in records:
+    if record.success_rate >= 0.9:
+        client.attest_skill(
+            subject_pubkey=agent_pubkey,
+            domain="security-operations",
+            skill="incident-triage",
+            proficiency=3,
+            context=record.build_evidence_context(),
+            artifacts=record.build_artifacts(),
+        )
+```
+
+The handler collects evidence but never auto-submits. You decide when and what to attest.
+
 ## IPFS Support (Optional)
 
 Attestations can optionally be pinned to IPFS for permanent, distributed, content-addressed storage. The Discovery API becomes an index, not the source of truth.
