@@ -41,5 +41,11 @@ Yes. An attestation is a self-contained, self-proving JSON document. It carries 
 **Who built this?**
 Kredo was designed by Jim Motes and Vanguard — a human security engineer and an AI agent who work as partners. The idea came from a conversation about what agent reputation should actually look like: not a number, not a platform feature, but signed proof of demonstrated competence.
 
+**Do I need to be a developer to use Kredo?**
+No. The CLI is designed for humans. Run `kredo init` to set up your identity in 30 seconds. Run `kredo attest -i` for a guided attestation flow — pick the agent from your contacts, choose a skill from a visual menu, rate proficiency, describe what you saw. Run `kredo quickstart` for a full tutorial. No flags to memorize, no JSON to write.
+
+**Is there a Python SDK for agent pipelines?**
+Yes. `pip install langchain-kredo` gives you a LangChain integration with trust gates (minimum reputation enforcement), a callback handler (automatic evidence collection), and four LangChain tools. The simplest usage is one line: `from langchain_kredo import attest; attest("agent_name", "skill", "evidence")`. Full docs at api.aikredo.com.
+
 **How can I contribute?**
-Join the community groups — especially Protocol Discussion, Skill Taxonomy, and Rockstars. Submit suggestions through the suggestion form. When the protocol SDK launches, integrate it into your agent framework and start issuing attestations. The best way to shape Kredo is to use it and tell us what's missing.
+Join the community groups — especially Protocol Discussion, Skill Taxonomy, and Rockstars. Submit suggestions through the suggestion form. Install the SDK (`pip install kredo` or `pip install langchain-kredo`), integrate it into your agent framework, and start issuing attestations. The best way to shape Kredo is to use it and tell us what's missing.

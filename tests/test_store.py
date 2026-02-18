@@ -221,3 +221,54 @@ class TestImportExport:
         assert att_id == att.id
         result = store.get_attestation(att_id)
         assert result is not None
+
+
+class TestContacts:
+    def test_find_key_by_name_identity(self, store):
+        """find_key_by_name should search identities first."""
+        store.save_identity(_make_pubkey(1), "Alice", "agent", b"seed", False, True)
+        result = store.find_key_by_name("Alice")
+        assert result is not None
+        assert result["pubkey"] == _make_pubkey(1)
+
+    def test_find_key_by_name_case_insensitive(self, store):
+        store.save_identity(_make_pubkey(1), "Alice", "agent", b"seed", False, True)
+        result = store.find_key_by_name("alice")
+        assert result is not None
+        assert result["name"] == "Alice"
+
+    def test_find_key_by_name_known_key(self, store):
+        """find_key_by_name should fall back to known_keys."""
+        store.register_known_key(_make_pubkey(2), name="Bob", attestor_type="human")
+        result = store.find_key_by_name("Bob")
+        assert result is not None
+        assert result["pubkey"] == _make_pubkey(2)
+
+    def test_find_key_by_name_not_found(self, store):
+        result = store.find_key_by_name("Nobody")
+        assert result is None
+
+    def test_list_contacts(self, store):
+        store.register_known_key(_make_pubkey(1), name="Alice")
+        store.register_known_key(_make_pubkey(2), name="Bob")
+        contacts = store.list_contacts()
+        assert len(contacts) == 2
+        names = {c["name"] for c in contacts}
+        assert names == {"Alice", "Bob"}
+
+    def test_list_contacts_empty(self, store):
+        assert store.list_contacts() == []
+
+    def test_remove_contact_by_name(self, store):
+        store.register_known_key(_make_pubkey(1), name="Alice")
+        assert store.remove_contact("Alice") is True
+        assert store.list_contacts() == []
+
+    def test_remove_contact_by_pubkey(self, store):
+        pk = _make_pubkey(1)
+        store.register_known_key(pk, name="Alice")
+        assert store.remove_contact(pk) is True
+        assert store.list_contacts() == []
+
+    def test_remove_nonexistent_contact(self, store):
+        assert store.remove_contact("Nobody") is False

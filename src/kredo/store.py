@@ -213,6 +213,43 @@ class KredoStore:
         except sqlite3.Error as e:
             raise StoreError(f"Failed to register key: {e}") from e
 
+    def find_key_by_name(self, name: str) -> Optional[dict]:
+        """Find a known key or identity by name (case-insensitive)."""
+        # Check identities first
+        row = self._conn.execute(
+            "SELECT pubkey, name, type FROM identities WHERE LOWER(name) = LOWER(?)",
+            (name,),
+        ).fetchone()
+        if row:
+            return dict(row)
+        # Then known_keys
+        row = self._conn.execute(
+            "SELECT pubkey, name, type FROM known_keys WHERE LOWER(name) = LOWER(?)",
+            (name,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_contacts(self) -> list[dict]:
+        """List all known keys with last seen dates."""
+        rows = self._conn.execute(
+            "SELECT pubkey, name, type, first_seen, last_seen FROM known_keys ORDER BY last_seen DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def remove_contact(self, name_or_pubkey: str) -> bool:
+        """Remove a known key by name or pubkey."""
+        if name_or_pubkey.startswith("ed25519:"):
+            self._conn.execute(
+                "DELETE FROM known_keys WHERE pubkey = ?", (name_or_pubkey,)
+            )
+        else:
+            self._conn.execute(
+                "DELETE FROM known_keys WHERE LOWER(name) = LOWER(?)",
+                (name_or_pubkey,),
+            )
+        self._conn.commit()
+        return self._conn.total_changes > 0
+
     # --- Attestations ---
 
     def save_attestation(self, attestation_json: str) -> str:

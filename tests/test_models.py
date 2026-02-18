@@ -38,7 +38,7 @@ class TestSubject:
             Subject(pubkey="rsa:abc", name="x")
 
     def test_invalid_pubkey_length(self):
-        with pytest.raises(ValueError, match="64 characters"):
+        with pytest.raises(ValueError, match="64 hex characters"):
             Subject(pubkey="ed25519:abcd", name="x")
 
     def test_invalid_pubkey_hex(self):
@@ -90,7 +90,7 @@ class TestAttestation:
 
     def test_warning_requires_category(self):
         now = _now()
-        with pytest.raises(ValueError, match="warning_category"):
+        with pytest.raises(ValueError, match="require a category"):
             Attestation(
                 type=AttestationType.WARNING,
                 subject=Subject(pubkey=_make_pubkey(1), name="x"),
@@ -102,7 +102,7 @@ class TestAttestation:
 
     def test_warning_requires_artifacts(self):
         now = _now()
-        with pytest.raises(ValueError, match="at least 1 evidence artifact"):
+        with pytest.raises(ValueError, match="verifiable evidence"):
             Attestation(
                 type=AttestationType.WARNING,
                 subject=Subject(pubkey=_make_pubkey(1), name="x"),
@@ -115,7 +115,7 @@ class TestAttestation:
 
     def test_warning_requires_long_context(self):
         now = _now()
-        with pytest.raises(ValueError, match="context >= 100"):
+        with pytest.raises(ValueError, match="at least 100 characters"):
             Attestation(
                 type=AttestationType.WARNING,
                 subject=Subject(pubkey=_make_pubkey(1), name="x"),

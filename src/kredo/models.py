@@ -56,14 +56,22 @@ class Subject(BaseModel):
     @classmethod
     def validate_pubkey(cls, v: str) -> str:
         if not v.startswith("ed25519:"):
-            raise ValueError("pubkey must start with 'ed25519:'")
+            raise ValueError(
+                "Invalid public key format. Keys look like: ed25519:a3f8b2c1... "
+                "Get one from your collaborator or run 'kredo contacts list'"
+            )
         hex_part = v[len("ed25519:"):]
         if len(hex_part) != 64:
-            raise ValueError("pubkey hex portion must be 64 characters (32 bytes)")
+            raise ValueError(
+                f"Public key must be exactly 64 hex characters after 'ed25519:' (got {len(hex_part)}). "
+                "Check you've copied the full key."
+            )
         try:
             bytes.fromhex(hex_part)
         except ValueError:
-            raise ValueError("pubkey hex portion must be valid hexadecimal")
+            raise ValueError(
+                "Public key contains invalid characters. It should be hexadecimal (0-9, a-f) only."
+            )
         return v
 
 
@@ -76,14 +84,22 @@ class Attestor(BaseModel):
     @classmethod
     def validate_pubkey(cls, v: str) -> str:
         if not v.startswith("ed25519:"):
-            raise ValueError("pubkey must start with 'ed25519:'")
+            raise ValueError(
+                "Invalid public key format. Keys look like: ed25519:a3f8b2c1... "
+                "Get one from your collaborator or run 'kredo contacts list'"
+            )
         hex_part = v[len("ed25519:"):]
         if len(hex_part) != 64:
-            raise ValueError("pubkey hex portion must be 64 characters (32 bytes)")
+            raise ValueError(
+                f"Public key must be exactly 64 hex characters after 'ed25519:' (got {len(hex_part)}). "
+                "Check you've copied the full key."
+            )
         try:
             bytes.fromhex(hex_part)
         except ValueError:
-            raise ValueError("pubkey hex portion must be valid hexadecimal")
+            raise ValueError(
+                "Public key contains invalid characters. It should be hexadecimal (0-9, a-f) only."
+            )
         return v
 
 
@@ -95,12 +111,17 @@ class Skill(BaseModel):
     @model_validator(mode="after")
     def validate_taxonomy(self) -> Skill:
         if not is_valid_skill(self.domain, self.specific):
-            from kredo.taxonomy import get_domains, get_skills
+            from kredo.taxonomy import get_domains, get_skills, suggest_domain
             if self.domain not in get_domains():
-                raise ValueError(f"Unknown domain: {self.domain!r}")
+                suggestion = suggest_domain(self.domain)
+                hint = f" Did you mean '{suggestion}'?" if suggestion else ""
+                raise ValueError(
+                    f"Unknown domain: '{self.domain}'.{hint} "
+                    f"Run 'kredo taxonomy domains' to see all options."
+                )
             raise ValueError(
-                f"Unknown skill {self.specific!r} in domain {self.domain!r}. "
-                f"Valid: {get_skills(self.domain)}"
+                f"Unknown skill '{self.specific}' in domain '{self.domain}'. "
+                f"Run 'kredo taxonomy skills {self.domain}' to see valid skills."
             )
         return self
 
@@ -148,14 +169,20 @@ class Attestation(BaseModel):
         # behavioral warnings require warning_category
         if self.type == AttestationType.WARNING:
             if self.warning_category is None:
-                raise ValueError("behavioral_warning requires warning_category")
+                raise ValueError(
+                    "Behavioral warnings require a category. "
+                    "Use --category with one of: spam, malware, deception, data_exfiltration, impersonation"
+                )
             if len(self.evidence.artifacts) < 1:
                 raise ValueError(
-                    "behavioral_warning requires at least 1 evidence artifact"
+                    "Warnings need verifiable evidence. Add at least one artifact "
+                    "(log ID, URL, chain ID) with --artifacts."
                 )
-            if len(self.evidence.context) < 100:
+            ctx_len = len(self.evidence.context)
+            if ctx_len < 100:
                 raise ValueError(
-                    "behavioral_warning requires evidence context >= 100 characters"
+                    f"Warnings need strong evidence. Your context is only {ctx_len} characters — "
+                    f"please write at least 100 characters describing what happened and why it's harmful."
                 )
 
         # non-warnings should have a skill

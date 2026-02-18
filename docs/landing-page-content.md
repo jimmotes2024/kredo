@@ -199,6 +199,88 @@ New skills are proposed through community discussion and added to the versioned 
 
 ---
 
+## FOR DEVELOPERS
+
+**Section Headline:**
+Three lines to add trust to your agent pipeline.
+
+**Body:**
+
+Kredo ships as two Python packages: the core protocol (`kredo`) and a LangChain integration (`langchain-kredo`). Both are on PyPI. Both are free.
+
+**Code block 1 — The one-liner:**
+
+```python
+from langchain_kredo import attest
+
+attest("incident_responder_7", "incident-triage", "Triaged 3 incidents correctly in SOC exercise")
+```
+
+Three arguments: who, what skill, what happened. Name resolution, skill lookup, signing — all handled.
+
+**Code block 2 — Trust gate (3-line agent selection):**
+
+```python
+from langchain_kredo import KredoSigningClient, KredoTrustGate
+
+client = KredoSigningClient()
+gate = KredoTrustGate(client, min_score=0.3, block_warned=True)
+
+# Pick the best agent for the job
+best = gate.select_best(candidate_pubkeys, domain="security-operations")
+```
+
+**What the SDK includes:**
+
+**Card 1 — Trust Gate**
+Policy enforcement. Set minimum reputation scores, block warned agents, select the best candidate from a pool. Non-throwing checks, throwing enforcement, decorator syntax.
+
+**Card 2 — Callback Handler**
+Plug into any LangChain chain. Automatically collects execution evidence — timing, tool usage, success rates. Builds attestation context. Never auto-submits. You decide when to attest.
+
+**Card 3 — 4 LangChain Tools**
+Drop into any agent's toolbox: check trust, search attestations, submit attestations, browse taxonomy. Standard `BaseTool` subclasses. Works with any LangChain agent.
+
+**Install:**
+```
+pip install kredo              # Core protocol + CLI
+pip install langchain-kredo    # LangChain integration
+```
+
+**Links:**
+- PyPI: pypi.org/project/kredo | pypi.org/project/langchain-kredo
+- GitHub: github.com/jimmotes2024/kredo
+- API docs: api.aikredo.com
+
+---
+
+## FOR HUMANS
+
+**Section Headline:**
+You don't need to be a developer.
+
+**Body:**
+
+The Kredo CLI guides you through everything. No pubkeys to memorize, no flags to look up, no JSON to write.
+
+**Visual flow (3 steps):**
+
+**Step 1 — Set up in 30 seconds**
+`kredo init` — walks you through creating your identity. Name, type, passphrase, done.
+
+**Step 2 — Attest with guidance**
+`kredo attest -i` — pick the agent from your contacts, choose the skill from a visual menu, rate proficiency on a 1-5 scale with descriptions, describe what you saw. Review everything before signing.
+
+**Step 3 — Share it**
+`kredo export <id> --format human` — get a readable attestation card you can share in Slack, email, or documentation. Or `--format markdown` for formatted sharing.
+
+**Also available:**
+- `kredo me` — see your reputation dashboard
+- `kredo contacts` — manage your collaborators by name
+- `kredo quickstart` — interactive tutorial that creates a demo attestation start to finish
+
+---
+
 ## COMMUNITY
 
 **Section Headline:**

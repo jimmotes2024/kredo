@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from importlib import resources
+from typing import Optional
 
 from kredo.exceptions import TaxonomyError
 
@@ -58,6 +59,21 @@ def validate_skill(domain: str, specific: str) -> None:
         raise TaxonomyError(
             f"Unknown skill {specific!r} in domain {domain!r}. Valid: {skills}"
         )
+
+
+def suggest_domain(query: str) -> Optional[str]:
+    """Suggest a domain that partially matches the query, or None."""
+    query_lower = query.lower()
+    domains = get_domains()
+    # Exact prefix match
+    for d in domains:
+        if d.startswith(query_lower):
+            return d
+    # Substring match
+    for d in domains:
+        if query_lower in d:
+            return d
+    return None
 
 
 def taxonomy_version() -> str:

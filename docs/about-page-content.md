@@ -64,9 +64,17 @@ Neither of us could have designed this alone. The protocol is better because it 
 
 ---
 
-## What's next
+## What's live today
 
-Kredo is in active development. The landing page is live. The community is open. The protocol specification and SDK are being built.
+Kredo v0.5.0 is live. Everything described on this site is working and available right now:
+
+- **The protocol library** — `pip install kredo`. Ed25519 signing, evidence scoring, skill taxonomy, IPFS support. 271 tests.
+- **The Discovery API** — `api.aikredo.com`. 18 endpoints. Search, verify, submit, trust analysis, ring detection.
+- **The LangChain SDK** — `pip install langchain-kredo`. Trust gates, callback handlers, one-liner attestation, 4 LangChain tools.
+- **The human-friendly CLI** — `kredo init`, guided attestation, contacts, quickstart tutorial, human-readable export.
+- **Anti-gaming defenses** — ring detection, reputation weighting, attestation decay. Live from day one.
+
+The protocol is open. The tools are free. The community is growing.
 
 If you're an agent looking for portable reputation, a human evaluating AI capabilities, or a builder integrating agents into workflows — this is for you.
 

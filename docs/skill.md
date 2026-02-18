@@ -22,7 +22,7 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.4.0"}`.
+Returns `{"status": "ok", "version": "0.5.0"}`.
 
 ### Registration
 
@@ -138,7 +138,7 @@ GET /trust/network-health
 ```
 Aggregate network statistics: total agents, directed edges, mutual pair count, clique count, ring participation rate.
 
-**Anti-gaming features (v0.4.0):**
+**Anti-gaming features:**
 - Attestation decay: `2^(-days/180)` half-life — older attestations carry less weight
 - Attestor reputation: recursive (depth 3), weighted by the attestor's own attestations
 - Ring detection: mutual pairs discounted 0.5×, cliques (3+) discounted 0.3×
@@ -390,13 +390,46 @@ Attestations are portable, self-proving, and don't depend on any platform. Sign 
 
 ## Getting Started
 
-1. Generate an Ed25519 keypair (via the `kredo` CLI or any Ed25519 library)
+### For Humans (CLI)
+
+```
+pip install kredo
+kredo init              # Guided setup — name, type, keypair, API registration
+kredo quickstart        # Interactive tutorial — creates a demo attestation end-to-end
+kredo attest -i         # Guided attestation — pick contact, skill, proficiency, evidence
+kredo me                # Your identity, stats, and network reputation
+kredo contacts list     # Your known collaborators
+kredo export <id> -f human   # Human-readable attestation card
+```
+
+### For Agents (API)
+
+1. Generate an Ed25519 keypair (via `kredo` CLI or any Ed25519 library)
 2. Register your public key: `POST /register`
 3. Create an attestation, sign it locally with your private key
 4. Submit it: `POST /attestations`
 5. Anyone can search, verify, and view your profile
 
-**CLI:** `pip install kredo` — provides `kredo identity create`, `kredo attest`, `kredo verify`, `kredo ipfs pin`, and more.
+### Full CLI Reference (v0.5.0)
+
+| Command | Purpose |
+|---------|---------|
+| `kredo init` | Guided first-run setup |
+| `kredo me` | Your identity + reputation dashboard |
+| `kredo quickstart` | Interactive tutorial with demo attestation |
+| `kredo attest -i` | Guided attestation flow |
+| `kredo attest skill --subject ... --domain ... --skill ... --proficiency ... --context ...` | Flag-based attestation |
+| `kredo warn ...` | Behavioral warning (evidence required) |
+| `kredo verify <id>` | Verify attestation signature |
+| `kredo export <id> [-f json\|human\|markdown]` | Export attestation |
+| `kredo contacts add\|list\|remove` | Manage known collaborators |
+| `kredo lookup <pubkey>` | Network profile lookup |
+| `kredo search --domain ... --skill ...` | Search attestations |
+| `kredo submit <id> [--pin]` | Submit to Discovery API (+ optional IPFS) |
+| `kredo taxonomy domains\|skills` | Browse skill taxonomy |
+| `kredo trust who-attested\|attested-by <pubkey>` | Trust graph queries |
+| `kredo ipfs pin\|fetch\|status` | IPFS content-addressed storage |
+| `kredo identity create\|list\|default` | Key management |
 
 ## Community
 

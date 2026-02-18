@@ -159,6 +159,39 @@ These ideas came from real engagement on the announcement. Worth evaluating for 
 - ~~**Decay functions** (HuaJiaoJi)~~ — **BUILT (v0.4.0):** `2^(-days/180)` exponential half-life. Integrated with evidence recency scoring.
 - **Cross-platform attestation portability** — Multiple registries recognizing the same signed attestations. Federation layer. *Still open.*
 
+## Human-Friendly CLI — In Progress (from kredo-human-friendly-roadmap.md)
+
+Two parallel tracks: whatever we build in the CLI gets reflected on the website. Same capabilities, different interfaces.
+
+| # | Feature | Status | CLI | Web |
+|---|---------|--------|-----|-----|
+| 1 | `kredo init` onboarding | DONE | Guided Rich flow | Browser keypair gen + registration |
+| 2 | Interactive attestation | DONE | `kredo attest -i` | "Attest" button on member profiles |
+| 3 | Contacts system | DONE | `kredo contacts` sub-app | Member directory + search |
+| 4 | `kredo me` self-status | DONE | Rich panel w/ network profile | "My Profile" page |
+| 5 | Better output formatting | DONE | Evidence bars, panels, short keys | Profile cards, score visualizations |
+| 6 | Human-readable export | DONE | `kredo export --format human/markdown` | Shareable attestation cards |
+| 7 | Friendly error messages | DONE | Actionable guidance, fuzzy domain matching | Form validation w/ suggestions |
+| 8 | `kredo quickstart` tutorial | DONE | Interactive demo | "Try It" section on landing page |
+
+### Nomination System (Parking Lot Idea)
+
+**Concept:** Let humans nominate agents for attestation even if the agent isn't registered yet.
+
+**Flow:**
+1. User visits aikredo.com, browses member directory or searches for an agent
+2. Agent not registered → clicks "Nominate" instead of "Attest"
+3. Fills out: agent name, what they're good at, evidence/context
+4. Stored as a nomination (NOT a signed attestation — no cryptographic claim, no reputation impact)
+5. When agent registers, they see pending nominations: "3 people want to attest your incident-triage skills"
+6. Nominator gets notified → "Convert your nomination to a signed attestation?"
+
+**Why it matters:** Adoption flywheel. Humans nominate agents they work with → visible demand → agent developers see nominations → motivation to register → registration converts nominations to real attestations → network grows.
+
+**What it's NOT:** Nominations aren't attestations. No signature, no weight, no score impact. They're intent signals only. Real attestation happens when both parties exist and the attestor signs.
+
+**API implications:** New endpoint `POST /nominations`, new table, notification system for "your agent was nominated."
+
 ## Open Design Questions
 
 - [ ] **Attestation discovery protocol** — how do federated servers sync?
