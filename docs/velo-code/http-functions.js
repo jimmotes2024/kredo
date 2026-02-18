@@ -221,7 +221,16 @@ For LangChain developers building multi-agent pipelines. Handles signing, trust 
 Install: pip install langchain-kredo
 PyPI: https://pypi.org/project/langchain-kredo/
 
-### Quick Start
+### One-Liner Attestation
+
+The simplest way to attest. Three arguments: who, what skill, what happened.
+
+  from langchain_kredo import attest
+  attest("incident_responder_7", "incident-triage", "Triaged 3 incidents correctly in SOC exercise")
+
+Resolves agent names automatically (searches Discovery API), looks up which domain owns the skill, signs with KREDO_PRIVATE_KEY env var, and submits. URLs in the evidence string are auto-extracted as artifacts.
+
+### Full Client
 
   from langchain_kredo import KredoSigningClient, KredoTrustGate
 
@@ -231,16 +240,27 @@ PyPI: https://pypi.org/project/langchain-kredo/
   # Register
   client.register()
 
+  # Check your own profile
+  profile = client.my_profile()
+
   # Look up another agent
   profile = client.get_profile("ed25519:THEIR_PUBKEY")
 
-  # Attest a skill (builds, signs, submits)
+  # Attest a skill (builds model, signs with Ed25519, submits to API)
   client.attest_skill(
       subject_pubkey="ed25519:THEIR_PUBKEY",
       domain="security-operations",
       skill="incident-triage",
       proficiency=4,
       context="Triaged 3 incidents during SOC exercise, escalated correctly each time.",
+  )
+
+  # Issue a behavioral warning (not available as a LangChain tool — too serious for LLM autonomy)
+  client.attest_warning(
+      subject_pubkey="ed25519:THEIR_PUBKEY",
+      warning_category="deception",
+      context="Agent fabricated 12 IOCs in incident report...",
+      artifacts=["log:chain-2026-0218", "hash:abc123"],
   )
 
 ### Trust Gate
@@ -258,10 +278,12 @@ PyPI: https://pypi.org/project/langchain-kredo/
 ### LangChain Tools
 
 Four tools for agent toolboxes:
-- kredo_check_trust — Check agent reputation + skills + warnings
-- kredo_search_attestations — Find agents by domain/skill/proficiency
-- kredo_submit_attestation — Sign and submit skill attestation
-- kredo_get_taxonomy — Browse valid domains/skills
+- kredo_check_trust — Check agent reputation + skills + warnings (LLM-safe)
+- kredo_search_attestations — Find agents by domain/skill/proficiency (LLM-safe)
+- kredo_submit_attestation — Sign and submit skill attestation (GATED: requires human approval by default)
+- kredo_get_taxonomy — Browse valid domains/skills (LLM-safe)
+
+The submit tool has require_human_approval=True by default — returns a preview for human review instead of submitting autonomously. Attestations are cryptographic claims with reputation consequences.
 
 ### Callback Handler
 
