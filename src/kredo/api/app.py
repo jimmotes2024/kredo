@@ -22,6 +22,7 @@ from kredo.exceptions import (
 )
 
 from kredo.api.deps import close_store, init_store
+from kredo import taxonomy as _taxonomy_module
 from kredo.api.routers import (
     attestations,
     profiles,
@@ -37,7 +38,8 @@ from kredo import __version__ as _VERSION
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_store()
+    store = init_store()
+    _taxonomy_module.set_store(store)
     yield
     close_store()
 

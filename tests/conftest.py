@@ -21,6 +21,7 @@ from kredo.models import (
     Subject,
 )
 from kredo.store import KredoStore
+from kredo.taxonomy import invalidate_cache as _invalidate_taxonomy_cache
 
 
 @pytest.fixture
@@ -35,6 +36,7 @@ def store(tmp_db):
     s = KredoStore(db_path=tmp_db)
     yield s
     s.close()
+    _invalidate_taxonomy_cache()
 
 
 @pytest.fixture

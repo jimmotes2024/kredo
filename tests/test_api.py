@@ -16,6 +16,7 @@ from nacl.signing import SigningKey
 from kredo.api.app import app
 from kredo.api.deps import close_store, init_store
 from kredo.api.rate_limit import registration_limiter, submission_limiter
+from kredo.taxonomy import invalidate_cache as _invalidate_taxonomy_cache, set_store as _set_taxonomy_store
 from kredo.evidence import score_evidence
 from kredo.models import (
     Attestation,
@@ -41,11 +42,13 @@ def _pubkey(sk: SigningKey) -> str:
 def _fresh_store(tmp_path):
     """Give every test a fresh store + clear rate limiters."""
     db_path = tmp_path / "test_api.db"
-    init_store(db_path=db_path)
+    store = init_store(db_path=db_path)
+    _set_taxonomy_store(store)
     # Reset rate limiters
     submission_limiter._timestamps.clear()
     registration_limiter._timestamps.clear()
     yield
+    _invalidate_taxonomy_cache()
     close_store()
 
 

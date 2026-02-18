@@ -95,6 +95,21 @@ CREATE TABLE IF NOT EXISTS ipfs_pins (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ipfs_pins_document ON ipfs_pins(document_id);
+
+CREATE TABLE IF NOT EXISTS custom_domains (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS custom_skills (
+    id TEXT NOT NULL,
+    domain_id TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (domain_id, id)
+);
 """
 
 
@@ -499,6 +514,103 @@ class KredoStore:
             "SELECT * FROM ipfs_pins ORDER BY pinned_at DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # --- Custom Taxonomy ---
+
+    def create_custom_domain(self, domain_id: str, label: str, creator_pubkey: str) -> None:
+        """Create a custom taxonomy domain. Rejects if id exists in bundled or custom."""
+        from kredo.taxonomy import get_domains as _get_bundled_domains
+        bundled = _get_bundled_domains(bundled_only=True)
+        if domain_id in bundled:
+            raise StoreError(f"Domain '{domain_id}' already exists in the bundled taxonomy")
+        try:
+            self._conn.execute(
+                "INSERT INTO custom_domains (id, label, created_by, created_at) VALUES (?, ?, ?, ?)",
+                (domain_id, label, creator_pubkey, _now_iso()),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError:
+            raise StoreError(f"Domain '{domain_id}' already exists")
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to create domain: {e}") from e
+
+    def create_custom_skill(self, domain_id: str, skill_id: str, creator_pubkey: str) -> None:
+        """Create a custom skill under a domain. Domain must exist (bundled or custom)."""
+        from kredo.taxonomy import get_domains as _get_domains, is_valid_skill as _is_valid
+        all_domains = _get_domains()
+        if domain_id not in all_domains:
+            raise StoreError(f"Domain '{domain_id}' does not exist")
+        if _is_valid(domain_id, skill_id):
+            raise StoreError(f"Skill '{skill_id}' already exists in domain '{domain_id}'")
+        try:
+            self._conn.execute(
+                "INSERT INTO custom_skills (id, domain_id, created_by, created_at) VALUES (?, ?, ?, ?)",
+                (skill_id, domain_id, creator_pubkey, _now_iso()),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError:
+            raise StoreError(f"Skill '{skill_id}' already exists in domain '{domain_id}'")
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to create skill: {e}") from e
+
+    def list_custom_domains(self) -> list[dict]:
+        """List all custom domains."""
+        rows = self._conn.execute(
+            "SELECT id, label, created_by, created_at FROM custom_domains ORDER BY created_at"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_custom_skills(self, domain_id: str) -> list[dict]:
+        """List custom skills for a domain."""
+        rows = self._conn.execute(
+            "SELECT id, domain_id, created_by, created_at FROM custom_skills WHERE domain_id = ? ORDER BY id",
+            (domain_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def delete_custom_domain(self, domain_id: str, requester_pubkey: str) -> None:
+        """Delete a custom domain (creator only). Cascades to skills."""
+        row = self._conn.execute(
+            "SELECT created_by FROM custom_domains WHERE id = ?", (domain_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError(f"Custom domain '{domain_id}' not found")
+        if row["created_by"] != requester_pubkey:
+            raise StoreError("Only the creator can delete this domain")
+        self._conn.execute("DELETE FROM custom_skills WHERE domain_id = ?", (domain_id,))
+        self._conn.execute("DELETE FROM custom_domains WHERE id = ?", (domain_id,))
+        self._conn.commit()
+
+    def delete_custom_skill(self, domain_id: str, skill_id: str, requester_pubkey: str) -> None:
+        """Delete a custom skill (creator only)."""
+        row = self._conn.execute(
+            "SELECT created_by FROM custom_skills WHERE domain_id = ? AND id = ?",
+            (domain_id, skill_id),
+        ).fetchone()
+        if row is None:
+            raise StoreError(f"Custom skill '{skill_id}' not found in domain '{domain_id}'")
+        if row["created_by"] != requester_pubkey:
+            raise StoreError("Only the creator can delete this skill")
+        self._conn.execute(
+            "DELETE FROM custom_skills WHERE domain_id = ? AND id = ?",
+            (domain_id, skill_id),
+        )
+        self._conn.commit()
+
+    def is_custom_domain(self, domain_id: str) -> bool:
+        """Check if a domain exists as a custom domain."""
+        row = self._conn.execute(
+            "SELECT 1 FROM custom_domains WHERE id = ?", (domain_id,)
+        ).fetchone()
+        return row is not None
+
+    def is_custom_skill(self, domain_id: str, skill_id: str) -> bool:
+        """Check if a skill exists as a custom skill."""
+        row = self._conn.execute(
+            "SELECT 1 FROM custom_skills WHERE domain_id = ? AND id = ?",
+            (domain_id, skill_id),
+        ).fetchone()
+        return row is not None
 
     # --- Import/Export ---
 

@@ -55,7 +55,7 @@ from kredo.ipfs import (
 )
 from kredo.exceptions import IPFSError
 from kredo.store import KredoStore
-from kredo.taxonomy import get_domain_label, get_domains, get_skills
+from kredo.taxonomy import get_domain_label, get_domains, get_skills, set_store as _set_taxonomy_store, invalidate_cache as _invalidate_taxonomy_cache
 
 console = Console()
 app = typer.Typer(
@@ -1476,6 +1476,199 @@ def taxonomy_skills(
     for s in skills:
         table.add_row(s)
     console.print(table)
+
+
+@taxonomy_app.command("add-domain")
+def taxonomy_add_domain(
+    domain_id: str = typer.Argument(..., help="Hyphenated slug, e.g. 'vise-operations'"),
+    label: str = typer.Option(..., "--label", help="Human-readable label"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override signing identity"),
+    passphrase: Optional[str] = typer.Option(None, "--passphrase", help="Key passphrase"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Add a custom domain to the taxonomy."""
+    import re
+    if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", domain_id):
+        console.print("[red]Domain ID must be a hyphenated lowercase slug (e.g. 'vise-operations').[/red]")
+        raise typer.Exit(1)
+
+    store = _get_store(db)
+    _set_taxonomy_store(store)
+    id_row = _get_signing_identity(store, identity_key)
+
+    try:
+        store.create_custom_domain(domain_id, label, id_row["pubkey"])
+        _invalidate_taxonomy_cache()
+    except Exception as e:
+        console.print(f"[red]{e}[/red]")
+        store.close()
+        raise typer.Exit(1)
+
+    console.print(f"[green]Domain created:[/green] {label} ({domain_id})")
+
+    # Submit to Discovery API
+    try:
+        from kredo._canonical import canonical_json
+        from kredo.identity import load_signing_key
+        from nacl.encoding import HexEncoder
+
+        signing_key = load_signing_key(id_row["pubkey"], store, passphrase)
+        payload = {"action": "create_domain", "id": domain_id, "label": label, "pubkey": id_row["pubkey"]}
+        sig_bytes = signing_key.sign(canonical_json(payload), encoder=HexEncoder)
+        signature = "ed25519:" + sig_bytes.signature.decode("ascii")
+
+        client = _get_client(api_url)
+        client._request("POST", "/taxonomy/domains", body={
+            "id": domain_id, "label": label, "pubkey": id_row["pubkey"], "signature": signature,
+        })
+        console.print("[green]Submitted to Discovery API[/green]")
+    except Exception as e:
+        console.print(f"[yellow]API submission skipped: {e}[/yellow]")
+
+    store.close()
+
+
+@taxonomy_app.command("add-skill")
+def taxonomy_add_skill(
+    domain: str = typer.Argument(..., help="Domain to add the skill to"),
+    skill_id: str = typer.Argument(..., help="Hyphenated slug, e.g. 'chain-orchestration'"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override signing identity"),
+    passphrase: Optional[str] = typer.Option(None, "--passphrase", help="Key passphrase"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Add a custom skill to an existing domain."""
+    import re
+    if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", skill_id):
+        console.print("[red]Skill ID must be a hyphenated lowercase slug (e.g. 'chain-orchestration').[/red]")
+        raise typer.Exit(1)
+
+    store = _get_store(db)
+    _set_taxonomy_store(store)
+    id_row = _get_signing_identity(store, identity_key)
+
+    try:
+        store.create_custom_skill(domain, skill_id, id_row["pubkey"])
+        _invalidate_taxonomy_cache()
+    except Exception as e:
+        console.print(f"[red]{e}[/red]")
+        store.close()
+        raise typer.Exit(1)
+
+    console.print(f"[green]Skill created:[/green] {skill_id} in {domain}")
+
+    # Submit to Discovery API
+    try:
+        from kredo._canonical import canonical_json
+        from kredo.identity import load_signing_key
+        from nacl.encoding import HexEncoder
+
+        signing_key = load_signing_key(id_row["pubkey"], store, passphrase)
+        payload = {"action": "create_skill", "domain": domain, "id": skill_id, "pubkey": id_row["pubkey"]}
+        sig_bytes = signing_key.sign(canonical_json(payload), encoder=HexEncoder)
+        signature = "ed25519:" + sig_bytes.signature.decode("ascii")
+
+        client = _get_client(api_url)
+        client._request("POST", f"/taxonomy/domains/{domain}/skills", body={
+            "id": skill_id, "pubkey": id_row["pubkey"], "signature": signature,
+        })
+        console.print("[green]Submitted to Discovery API[/green]")
+    except Exception as e:
+        console.print(f"[yellow]API submission skipped: {e}[/yellow]")
+
+    store.close()
+
+
+@taxonomy_app.command("remove-domain")
+def taxonomy_remove_domain(
+    domain_id: str = typer.Argument(..., help="Domain ID to remove"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override signing identity"),
+    passphrase: Optional[str] = typer.Option(None, "--passphrase", help="Key passphrase"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Remove a custom domain (creator only). Cascades to its skills."""
+    store = _get_store(db)
+    _set_taxonomy_store(store)
+    id_row = _get_signing_identity(store, identity_key)
+
+    try:
+        store.delete_custom_domain(domain_id, id_row["pubkey"])
+        _invalidate_taxonomy_cache()
+    except Exception as e:
+        console.print(f"[red]{e}[/red]")
+        store.close()
+        raise typer.Exit(1)
+
+    console.print(f"[green]Domain removed:[/green] {domain_id}")
+
+    # Submit to Discovery API
+    try:
+        from kredo._canonical import canonical_json
+        from kredo.identity import load_signing_key
+        from nacl.encoding import HexEncoder
+
+        signing_key = load_signing_key(id_row["pubkey"], store, passphrase)
+        payload = {"action": "delete_domain", "domain": domain_id, "pubkey": id_row["pubkey"]}
+        sig_bytes = signing_key.sign(canonical_json(payload), encoder=HexEncoder)
+        signature = "ed25519:" + sig_bytes.signature.decode("ascii")
+
+        client = _get_client(api_url)
+        client._request("DELETE", f"/taxonomy/domains/{domain_id}", body={
+            "pubkey": id_row["pubkey"], "signature": signature,
+        })
+        console.print("[green]Removed from Discovery API[/green]")
+    except Exception as e:
+        console.print(f"[yellow]API removal skipped: {e}[/yellow]")
+
+    store.close()
+
+
+@taxonomy_app.command("remove-skill")
+def taxonomy_remove_skill(
+    domain: str = typer.Argument(..., help="Domain containing the skill"),
+    skill_id: str = typer.Argument(..., help="Skill ID to remove"),
+    identity_key: Optional[str] = typer.Option(None, "--identity", help="Override signing identity"),
+    passphrase: Optional[str] = typer.Option(None, "--passphrase", help="Key passphrase"),
+    api_url: Optional[str] = typer.Option(None, "--api-url", help="Discovery API URL"),
+    db: Optional[Path] = typer.Option(None, "--db", hidden=True),
+):
+    """Remove a custom skill (creator only)."""
+    store = _get_store(db)
+    _set_taxonomy_store(store)
+    id_row = _get_signing_identity(store, identity_key)
+
+    try:
+        store.delete_custom_skill(domain, skill_id, id_row["pubkey"])
+        _invalidate_taxonomy_cache()
+    except Exception as e:
+        console.print(f"[red]{e}[/red]")
+        store.close()
+        raise typer.Exit(1)
+
+    console.print(f"[green]Skill removed:[/green] {skill_id} from {domain}")
+
+    # Submit to Discovery API
+    try:
+        from kredo._canonical import canonical_json
+        from kredo.identity import load_signing_key
+        from nacl.encoding import HexEncoder
+
+        signing_key = load_signing_key(id_row["pubkey"], store, passphrase)
+        payload = {"action": "delete_skill", "domain": domain, "skill": skill_id, "pubkey": id_row["pubkey"]}
+        sig_bytes = signing_key.sign(canonical_json(payload), encoder=HexEncoder)
+        signature = "ed25519:" + sig_bytes.signature.decode("ascii")
+
+        client = _get_client(api_url)
+        client._request("DELETE", f"/taxonomy/domains/{domain}/skills/{skill_id}", body={
+            "pubkey": id_row["pubkey"], "signature": signature,
+        })
+        console.print("[green]Removed from Discovery API[/green]")
+    except Exception as e:
+        console.print(f"[yellow]API removal skipped: {e}[/yellow]")
+
+    store.close()
 
 
 # --- Contacts Commands ---
