@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from kredo.exceptions import KeyNotFoundError, StoreError
+from kredo.exceptions import DuplicateAttestationError, KeyNotFoundError, StoreError
 
 DEFAULT_DB_PATH = Path.home() / ".kredo" / "kredo.db"
 
@@ -275,7 +275,7 @@ class KredoStore:
             skill = data.get("skill") or {}
             evidence = data.get("evidence", {})
             self._conn.execute(
-                """INSERT OR REPLACE INTO attestations
+                """INSERT INTO attestations
                    (id, type, attestor_pubkey, subject_pubkey, domain, specific_skill,
                     proficiency, warning_category, evidence_context, evidence_artifacts,
                     evidence_outcome, evidence_interaction_date, issued, expires,
@@ -303,6 +303,12 @@ class KredoStore:
             )
             self._conn.commit()
             return att_id
+        except sqlite3.IntegrityError as e:
+            if "attestations.id" in str(e) or "UNIQUE constraint failed: attestations.id" in str(e):
+                raise DuplicateAttestationError(
+                    f"Attestation ID already exists and cannot be overwritten: {att_id}"
+                ) from e
+            raise StoreError(f"Failed to save attestation: {e}") from e
         except sqlite3.Error as e:
             raise StoreError(f"Failed to save attestation: {e}") from e
 

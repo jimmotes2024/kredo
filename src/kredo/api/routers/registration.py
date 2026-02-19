@@ -103,5 +103,8 @@ async def get_agent(
     """Get a single registered agent by pubkey."""
     agent = get_known_key(store, pubkey)
     if agent is None:
-        return {"error": f"Agent not found: {pubkey}"}, 404
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Agent not found: {pubkey}"},
+        )
     return agent

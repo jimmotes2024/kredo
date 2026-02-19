@@ -4,6 +4,21 @@
 
 const TaxonomyView = (() => {
 
+  async function resolveSigningContext() {
+    const identity = KredoStorage.getIdentity();
+    if (!identity) return { identity: null, secretKey: null };
+
+    if (KredoStorage.isEncrypted()) {
+      const passphrase = prompt('Enter your passphrase to sign this taxonomy change:');
+      if (!passphrase) return { identity, secretKey: null };
+      const secretKey = await KredoStorage.getSecretKey(passphrase);
+      return { identity, secretKey };
+    }
+
+    const secretKey = await KredoStorage.getSecretKey();
+    return { identity, secretKey };
+  }
+
   async function render() {
     const hasId = KredoStorage.hasIdentity();
     KredoUI.renderView(`
@@ -131,8 +146,7 @@ const TaxonomyView = (() => {
       return;
     }
 
-    const secretKey = KredoStorage.getSecretKey();
-    const identity = KredoStorage.getIdentity();
+    const { secretKey, identity } = await resolveSigningContext();
     if (!secretKey || !identity) {
       KredoUI.showAlert('Identity not available. Set up your identity first.', 'error');
       return;
@@ -173,8 +187,7 @@ const TaxonomyView = (() => {
       return;
     }
 
-    const secretKey = KredoStorage.getSecretKey();
-    const identity = KredoStorage.getIdentity();
+    const { secretKey, identity } = await resolveSigningContext();
     if (!secretKey || !identity) {
       KredoUI.showAlert('Identity not available. Set up your identity first.', 'error');
       return;

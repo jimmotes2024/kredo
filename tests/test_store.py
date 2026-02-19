@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from kredo.exceptions import KeyNotFoundError, StoreError
+from kredo.exceptions import DuplicateAttestationError, KeyNotFoundError, StoreError
 from kredo.models import (
     AttestationType,
     AttestorType,
@@ -97,6 +97,12 @@ class TestAttestationStorage:
         assert len(results) == 1
         results = store.search_attestations(domain="collaboration")
         assert len(results) == 0
+
+    def test_save_duplicate_id_raises(self, store):
+        json_str, _ = self._make_attestation_json()
+        store.save_attestation(json_str)
+        with pytest.raises(DuplicateAttestationError):
+            store.save_attestation(json_str)
 
 
 class TestTrustGraph:

@@ -29,5 +29,9 @@ class StoreError(KredoError):
     """SQLite storage operation failed."""
 
 
+class DuplicateAttestationError(StoreError):
+    """Attempted to store an attestation with an ID that already exists."""
+
+
 class IPFSError(KredoError):
     """IPFS operation failed (pin, fetch, or provider configuration)."""

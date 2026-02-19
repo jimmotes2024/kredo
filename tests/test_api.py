@@ -211,9 +211,7 @@ class TestRegistration:
 
     def test_get_agent_not_found(self, client, pk_a):
         r = client.get(f"/agents/{pk_a}")
-        # Returns tuple (dict, 404) from the handler — FastAPI will return 200 with the tuple
-        # This is a known pattern; the handler should use JSONResponse for proper status
-        assert r.status_code == 200  # handler returns tuple, not JSONResponse
+        assert r.status_code == 404
 
 
 # ===== Taxonomy =====
@@ -252,6 +250,17 @@ class TestAttestationSubmission:
         assert "id" in data
         assert "evidence_score" in data
         assert data["evidence_score"]["composite"] > 0
+
+    def test_submit_duplicate_id_conflict(self, client, sk_a, pk_b):
+        att_data = _make_signed_attestation(sk_a, pk_b)
+        r1 = client.post("/attestations", json=att_data)
+        assert r1.status_code == 200
+
+        # Clear limiter so duplicate-ID behavior is exercised (not 429 throttling).
+        submission_limiter._timestamps.clear()
+        r2 = client.post("/attestations", json=att_data)
+        assert r2.status_code == 409
+        assert "already exists" in r2.json()["error"]
 
     def test_submit_unsigned(self, client, sk_a, pk_b):
         att_data = _make_signed_attestation(sk_a, pk_b)

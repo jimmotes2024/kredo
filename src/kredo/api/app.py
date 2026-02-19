@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from kredo.exceptions import (
+    DuplicateAttestationError,
     ExpiredAttestationError,
     InvalidAttestationError,
     InvalidSignatureError,
@@ -84,6 +85,11 @@ async def _expired_attestation(request: Request, exc: ExpiredAttestationError):
 @app.exception_handler(TaxonomyError)
 async def _taxonomy_error(request: Request, exc: TaxonomyError):
     return JSONResponse(status_code=422, content={"error": str(exc)})
+
+
+@app.exception_handler(DuplicateAttestationError)
+async def _duplicate_attestation(request: Request, exc: DuplicateAttestationError):
+    return JSONResponse(status_code=409, content={"error": str(exc)})
 
 
 @app.exception_handler(StoreError)
