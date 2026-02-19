@@ -99,6 +99,9 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 | `/ownership/confirm` | POST | Human-signed ownership confirmation |
 | `/ownership/revoke` | POST | Signed ownership revocation |
 | `/ownership/agent/{pubkey}` | GET | Ownership/accountability history for an agent |
+| `/integrity/baseline/set` | POST | Active human owner sets and signs file-hash baseline for an agent |
+| `/integrity/check` | POST | Agent-signed runtime integrity check against active baseline |
+| `/integrity/status/{pubkey}` | GET | Traffic-light integrity state and latest diff |
 | `/risk/source-anomalies` | GET | Source-cluster risk signals for anti-gaming review |
 | `/taxonomy` | GET | Full skill taxonomy |
 | `/taxonomy/{domain}` | GET | Skills in one domain |
@@ -109,7 +112,24 @@ Full API documentation: [aikredo.com/_functions/skill](https://aikredo.com/_func
 
 Runtime note: trust-analysis responses are short-TTL cached in-process (`KREDO_TRUST_CACHE_TTL_SECONDS`, default `30`).
 
-Accountability note: agent capability and accountability are intentionally separate. `/trust/analysis/{pubkey}` includes accountability tier (`unlinked` or `human-linked`) and a `deployability_score` multiplier.
+Accountability + integrity note: `/trust/analysis/{pubkey}` now includes:
+- `accountability` tier (`unlinked` or `human-linked`) and multiplier
+- `integrity` traffic-light context (`green`, `yellow`, `red`)
+- `deployability_multiplier` and `deployability_score = reputation_score × accountability.multiplier × integrity.multiplier`
+
+## Integrity Run-Gate (v0.8.0)
+
+Simple operator workflow:
+
+1. Human owner approves baseline once: `POST /integrity/baseline/set`
+2. Agent runs measurement check: `POST /integrity/check`
+3. Runtime reads gate state: `GET /integrity/status/{pubkey}`
+
+Traffic-light behavior:
+
+- `green` -> verified, safe to run
+- `yellow` -> changed since baseline (or not yet checked), owner review required
+- `red` -> unknown/unsigned integrity state, block run
 
 ## Skill Taxonomy
 
@@ -206,6 +226,7 @@ Every factor is visible via `GET /trust/analysis/{pubkey}`. No black boxes.
 
 Additional source-signal layer:
 - **Source concentration signals** — write-path audit events include source metadata (IP/user-agent) and can be clustered with `GET /risk/source-anomalies` to flag potential sybil-style activity from shared origins. This is a risk signal, not standalone proof.
+- **Integrity run-gate** — deployability now reflects accountability plus cryptographic integrity status (baseline + signed check). Unknown integrity is deliberately penalized by default.
 
 ## How It Works
 

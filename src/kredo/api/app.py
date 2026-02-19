@@ -28,6 +28,7 @@ from kredo.api.deps import close_store, init_store
 from kredo import taxonomy as _taxonomy_module
 from kredo.api.routers import (
     attestations,
+    integrity,
     profiles,
     ownership,
     registration,
@@ -149,6 +150,7 @@ async def _store_error(request: Request, exc: StoreError):
 app.include_router(profiles.router)  # before registration (more specific /agents/{pk}/profile)
 app.include_router(registration.router)
 app.include_router(attestations.router)
+app.include_router(integrity.router)
 app.include_router(search.router)
 app.include_router(taxonomy.router)
 app.include_router(revocations.router)

@@ -22,7 +22,7 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.7.0"}`.
+Returns `{"status": "ok", "version": "0.8.0"}`.
 
 ### Registration
 
@@ -146,7 +146,10 @@ Full trust analysis for an agent: reputation score, per-attestation weights (evi
 Also includes accountability tier and deployability score:
 - `accountability.tier`: `unlinked` or `human-linked`
 - `accountability.multiplier`: current accountability factor
-- `deployability_score`: `reputation_score × accountability.multiplier`
+- `integrity.traffic_light`: `green`, `yellow`, or `red`
+- `integrity.recommended_action`: `safe_to_run`, `owner_review_required`, or `block_run`
+- `deployability_multiplier`: `accountability.multiplier × integrity.multiplier`
+- `deployability_score`: `reputation_score × deployability_multiplier`
 
 ```
 GET /trust/rings
@@ -226,6 +229,50 @@ Signing payload:
 GET /ownership/agent/{pubkey}
 ```
 Returns active owner and ownership history for an agent.
+
+### Integrity Baselines and Runtime Checks
+
+Citizen-coder flow:
+1. Human owner sets an approved baseline (one button in UI).
+2. Agent reports current file hashes.
+3. System returns a traffic-light gate.
+
+```
+POST /integrity/baseline/set
+{
+  "baseline_id": "baseline-optional-id",
+  "agent_pubkey": "ed25519:...",
+  "owner_pubkey": "ed25519:...",
+  "file_hashes": [{"path":"agent.py","sha256":"<64-hex>"}],
+  "signature": "ed25519:<signed-by-owner>"
+}
+```
+
+Signing payload:
+`{"action":"integrity_set_baseline","baseline_id":"...","agent_pubkey":"...","owner_pubkey":"...","file_hashes":[...]}`  
+Only the active linked human owner can set a baseline.
+
+```
+POST /integrity/check
+{
+  "agent_pubkey": "ed25519:...",
+  "file_hashes": [{"path":"agent.py","sha256":"<64-hex>"}],
+  "signature": "ed25519:<signed-by-agent>"
+}
+```
+
+Signing payload:
+`{"action":"integrity_check","agent_pubkey":"...","file_hashes":[...]}`
+
+```
+GET /integrity/status/{agent_pubkey}
+```
+
+Returns:
+- `traffic_light`: `green` / `yellow` / `red`
+- `status_label`: why that state was chosen
+- `recommended_action`: runtime guardrail action
+- `requires_owner_reapproval`: explicit boolean for workflows
 
 ### Source Risk Signals
 

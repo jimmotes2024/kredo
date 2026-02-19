@@ -318,6 +318,120 @@ class TestContacts:
         result = store.find_key_by_name("Nobody")
         assert result is None
 
+
+class TestIntegrityStorage:
+    def test_set_and_get_active_integrity_baseline(self, store):
+        baseline_id = "baseline-store-01"
+        agent_pubkey = _make_pubkey(51)
+        owner_pubkey = _make_pubkey(61)
+        manifest = json.dumps(
+            {"file_hashes": [{"path": "agent.py", "sha256": "a" * 64}]},
+            sort_keys=True,
+        )
+
+        store.set_integrity_baseline(
+            baseline_id=baseline_id,
+            agent_pubkey=agent_pubkey,
+            owner_pubkey=owner_pubkey,
+            manifest_json=manifest,
+            signature="ed25519:" + "b" * 128,
+        )
+
+        active = store.get_active_integrity_baseline(agent_pubkey)
+        assert active is not None
+        assert active["id"] == baseline_id
+        assert active["agent_pubkey"] == agent_pubkey
+        assert active["owner_pubkey"] == owner_pubkey
+        assert active["is_active"] == 1
+
+    def test_new_baseline_marks_previous_inactive(self, store):
+        agent_pubkey = _make_pubkey(52)
+        owner_pubkey = _make_pubkey(62)
+        manifest_v1 = json.dumps(
+            {"file_hashes": [{"path": "agent.py", "sha256": "1" * 64}]},
+            sort_keys=True,
+        )
+        manifest_v2 = json.dumps(
+            {"file_hashes": [{"path": "agent.py", "sha256": "2" * 64}]},
+            sort_keys=True,
+        )
+
+        store.set_integrity_baseline(
+            baseline_id="baseline-store-02",
+            agent_pubkey=agent_pubkey,
+            owner_pubkey=owner_pubkey,
+            manifest_json=manifest_v1,
+            signature="ed25519:" + "c" * 128,
+        )
+        store.set_integrity_baseline(
+            baseline_id="baseline-store-03",
+            agent_pubkey=agent_pubkey,
+            owner_pubkey=owner_pubkey,
+            manifest_json=manifest_v2,
+            signature="ed25519:" + "d" * 128,
+        )
+
+        active = store.get_active_integrity_baseline(agent_pubkey)
+        assert active is not None
+        assert active["id"] == "baseline-store-03"
+
+        baselines = store.list_integrity_baselines(agent_pubkey)
+        assert len(baselines) == 2
+        baseline_by_id = {row["id"]: row for row in baselines}
+        assert baseline_by_id["baseline-store-02"]["is_active"] == 0
+        assert baseline_by_id["baseline-store-03"]["is_active"] == 1
+
+    def test_save_integrity_check_and_get_latest(self, store):
+        agent_pubkey = _make_pubkey(53)
+        owner_pubkey = _make_pubkey(63)
+        baseline_id = "baseline-store-04"
+
+        store.set_integrity_baseline(
+            baseline_id=baseline_id,
+            agent_pubkey=agent_pubkey,
+            owner_pubkey=owner_pubkey,
+            manifest_json=json.dumps(
+                {"file_hashes": [{"path": "agent.py", "sha256": "3" * 64}]},
+                sort_keys=True,
+            ),
+            signature="ed25519:" + "a" * 128,
+        )
+
+        first_id = store.save_integrity_check(
+            agent_pubkey=agent_pubkey,
+            status="green",
+            baseline_id=baseline_id,
+            diff_json=json.dumps({"changed_paths": []}),
+            measured_by_pubkey=agent_pubkey,
+            signature="ed25519:" + "e" * 128,
+            signature_valid=True,
+            raw_manifest_json=json.dumps(
+                {"file_hashes": [{"path": "agent.py", "sha256": "3" * 64}]},
+                sort_keys=True,
+            ),
+        )
+        second_id = store.save_integrity_check(
+            agent_pubkey=agent_pubkey,
+            status="yellow",
+            baseline_id=baseline_id,
+            diff_json=json.dumps({"changed_paths": ["agent.py"]}),
+            measured_by_pubkey=agent_pubkey,
+            signature="ed25519:" + "f" * 128,
+            signature_valid=True,
+            raw_manifest_json=json.dumps(
+                {"file_hashes": [{"path": "agent.py", "sha256": "4" * 64}]},
+                sort_keys=True,
+            ),
+        )
+
+        assert second_id > first_id
+        latest = store.get_latest_integrity_check(agent_pubkey)
+        assert latest is not None
+        assert latest["id"] == second_id
+        assert latest["status"] == "yellow"
+        assert latest["baseline_id"] == baseline_id
+        assert latest["signature_valid"] == 1
+
     def test_list_contacts(self, store):
         store.register_known_key(_make_pubkey(1), name="Alice")
         store.register_known_key(_make_pubkey(2), name="Bob")

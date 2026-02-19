@@ -138,6 +138,36 @@ CREATE TABLE IF NOT EXISTS human_contacts (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS integrity_baselines (
+    id TEXT PRIMARY KEY,
+    agent_pubkey TEXT NOT NULL,
+    owner_pubkey TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    signature TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_integrity_baselines_agent_active
+    ON integrity_baselines(agent_pubkey, is_active);
+
+CREATE TABLE IF NOT EXISTS integrity_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_pubkey TEXT NOT NULL,
+    baseline_id TEXT,
+    status TEXT NOT NULL,
+    diff_json TEXT,
+    measured_by_pubkey TEXT,
+    signature TEXT,
+    signature_valid INTEGER NOT NULL DEFAULT 0,
+    raw_manifest_json TEXT,
+    checked_at TEXT NOT NULL,
+    FOREIGN KEY (baseline_id) REFERENCES integrity_baselines(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_integrity_checks_agent_checked_at
+    ON integrity_checks(agent_pubkey, checked_at);
+
 CREATE TABLE IF NOT EXISTS audit_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT NOT NULL,
@@ -493,6 +523,113 @@ class KredoStore:
         row = self._conn.execute(
             "SELECT pubkey, email, email_verified, updated_at FROM human_contacts WHERE pubkey = ?",
             (pubkey,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    # --- Integrity Baselines / Checks ---
+
+    def set_integrity_baseline(
+        self,
+        baseline_id: str,
+        agent_pubkey: str,
+        owner_pubkey: str,
+        manifest_json: str,
+        signature: str,
+    ) -> None:
+        """Set a new active integrity baseline for an agent.
+
+        Existing active baselines for the same agent are preserved but marked inactive.
+        """
+        now = _now_iso()
+        try:
+            self._conn.execute(
+                "UPDATE integrity_baselines SET is_active = 0 WHERE agent_pubkey = ? AND is_active = 1",
+                (agent_pubkey,),
+            )
+            self._conn.execute(
+                """INSERT INTO integrity_baselines
+                   (id, agent_pubkey, owner_pubkey, manifest_json, signature, is_active, created_at)
+                   VALUES (?, ?, ?, ?, ?, 1, ?)""",
+                (
+                    baseline_id,
+                    agent_pubkey,
+                    owner_pubkey,
+                    manifest_json,
+                    signature,
+                    now,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            raise StoreError(f"Integrity baseline already exists: {baseline_id}") from e
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to set integrity baseline: {e}") from e
+
+    def get_active_integrity_baseline(self, agent_pubkey: str) -> Optional[dict]:
+        """Get the currently active integrity baseline for an agent."""
+        row = self._conn.execute(
+            """SELECT * FROM integrity_baselines
+               WHERE agent_pubkey = ? AND is_active = 1
+               ORDER BY created_at DESC
+               LIMIT 1""",
+            (agent_pubkey,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_integrity_baselines(self, agent_pubkey: str, limit: int = 20, offset: int = 0) -> list[dict]:
+        """List integrity baselines for an agent."""
+        rows = self._conn.execute(
+            """SELECT * FROM integrity_baselines
+               WHERE agent_pubkey = ?
+               ORDER BY created_at DESC
+               LIMIT ? OFFSET ?""",
+            (agent_pubkey, limit, offset),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def save_integrity_check(
+        self,
+        agent_pubkey: str,
+        status: str,
+        baseline_id: Optional[str] = None,
+        diff_json: Optional[str] = None,
+        measured_by_pubkey: Optional[str] = None,
+        signature: Optional[str] = None,
+        signature_valid: bool = False,
+        raw_manifest_json: Optional[str] = None,
+    ) -> int:
+        """Save an integrity check result and return row id."""
+        try:
+            cursor = self._conn.execute(
+                """INSERT INTO integrity_checks
+                   (agent_pubkey, baseline_id, status, diff_json, measured_by_pubkey,
+                    signature, signature_valid, raw_manifest_json, checked_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    agent_pubkey,
+                    baseline_id,
+                    status,
+                    diff_json,
+                    measured_by_pubkey,
+                    signature,
+                    int(signature_valid),
+                    raw_manifest_json,
+                    _now_iso(),
+                ),
+            )
+            self._conn.commit()
+            return int(cursor.lastrowid)
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to save integrity check: {e}") from e
+
+    def get_latest_integrity_check(self, agent_pubkey: str) -> Optional[dict]:
+        """Get the latest integrity check for an agent."""
+        row = self._conn.execute(
+            """SELECT * FROM integrity_checks
+               WHERE agent_pubkey = ?
+               ORDER BY checked_at DESC, id DESC
+               LIMIT 1""",
+            (agent_pubkey,),
         ).fetchone()
         return dict(row) if row else None
 

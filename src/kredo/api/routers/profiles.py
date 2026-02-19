@@ -21,6 +21,66 @@ from kredo.store import KredoStore
 router = APIRouter(tags=["profiles"])
 
 
+def _integrity_context(store: KredoStore, agent_pubkey: str) -> dict:
+    baseline = store.get_active_integrity_baseline(agent_pubkey)
+    latest_check = store.get_latest_integrity_check(agent_pubkey)
+
+    if baseline is None:
+        return {
+            "traffic_light": "red",
+            "status_label": "unknown_unsigned",
+            "multiplier": 0.6,
+            "recommended_action": "block_run",
+            "active_baseline_id": None,
+            "latest_check_id": latest_check["id"] if latest_check else None,
+        }
+    if latest_check is None:
+        return {
+            "traffic_light": "yellow",
+            "status_label": "baseline_set_not_checked",
+            "multiplier": 0.85,
+            "recommended_action": "owner_review_required",
+            "active_baseline_id": baseline["id"],
+            "latest_check_id": None,
+        }
+    if latest_check.get("baseline_id") != baseline.get("id"):
+        return {
+            "traffic_light": "yellow",
+            "status_label": "baseline_changed_recheck_required",
+            "multiplier": 0.85,
+            "recommended_action": "owner_review_required",
+            "active_baseline_id": baseline["id"],
+            "latest_check_id": latest_check["id"],
+        }
+    status = latest_check.get("status", "red")
+    if status == "green":
+        return {
+            "traffic_light": "green",
+            "status_label": "verified",
+            "multiplier": 1.0,
+            "recommended_action": "safe_to_run",
+            "active_baseline_id": baseline["id"],
+            "latest_check_id": latest_check["id"],
+        }
+    if status == "yellow":
+        return {
+            "traffic_light": "yellow",
+            "status_label": "changed_since_baseline",
+            "multiplier": 0.85,
+            "recommended_action": "owner_review_required",
+            "active_baseline_id": baseline["id"],
+            "latest_check_id": latest_check["id"],
+        }
+    return {
+        "traffic_light": "red",
+        "status_label": "integrity_unknown",
+        "multiplier": 0.6,
+        "recommended_action": "block_run",
+        "active_baseline_id": baseline["id"],
+        "latest_check_id": latest_check["id"],
+    }
+
+
 @router.get("/agents/{pubkey}/profile")
 async def agent_profile(
     pubkey: str,
@@ -109,6 +169,7 @@ async def agent_profile(
     # Trust analysis: reputation score, ring flags, weighted skills
     analysis_payload = get_cached_agent_analysis(store, pubkey)
     accountability = resolve_accountability_context(store, pubkey)
+    integrity = _integrity_context(store, pubkey)
     ring_flags = [
         {
             "ring_type": ring.get("ring_type"),
@@ -138,6 +199,8 @@ async def agent_profile(
             "reputation_score": owner_analysis.get("reputation_score", 0.0),
         }
 
+    combined_multiplier = accountability.multiplier * integrity["multiplier"]
+
     return {
         "pubkey": pubkey,
         "name": agent["name"],
@@ -156,9 +219,10 @@ async def agent_profile(
         "trust_analysis": {
             "reputation_score": analysis_payload.get("reputation_score", 0.0),
             "deployability_score": round(
-                analysis_payload.get("reputation_score", 0.0) * accountability.multiplier,
+                analysis_payload.get("reputation_score", 0.0) * combined_multiplier,
                 4,
             ),
+            "deployability_multiplier": round(combined_multiplier, 4),
             "ring_flags": ring_flags,
         },
         "accountability": {
@@ -167,6 +231,7 @@ async def agent_profile(
             "ownership_claim_id": accountability.ownership_claim_id,
             "owner": owner_details,
         },
+        "integrity": integrity,
     }
 
 

@@ -151,6 +151,20 @@ def _make_signed_warning(
     return json.loads(signed.model_dump_json())
 
 
+def _sample_file_hashes(version: int = 1) -> list[dict]:
+    if version == 1:
+        return [
+            {"path": "agent.py", "sha256": "1" * 64},
+            {"path": "policy.yaml", "sha256": "2" * 64},
+        ]
+    if version == 2:
+        return [
+            {"path": "agent.py", "sha256": "3" * 64},  # changed
+            {"path": "policy.yaml", "sha256": "2" * 64},
+        ]
+    raise ValueError("Unsupported version for sample file hashes")
+
+
 # ===== Health =====
 
 class TestHealth:
@@ -407,6 +421,203 @@ class TestOwnership:
             },
         )
         assert r.status_code == 404
+
+
+class TestIntegrity:
+    def _link_agent_to_owner(self, client, sk_agent: SigningKey, sk_owner: SigningKey, claim_id: str):
+        pk_agent = _pubkey(sk_agent)
+        pk_owner = _pubkey(sk_owner)
+
+        registration_limiter._timestamps.clear()
+        r1 = client.post("/register", json={"pubkey": pk_agent, "name": "AgentOne", "type": "agent"})
+        assert r1.status_code == 200
+        registration_limiter._timestamps.clear()
+        r2 = client.post("/register", json={"pubkey": pk_owner, "name": "OwnerOne", "type": "human"})
+        assert r2.status_code == 200
+
+        claim_payload = {
+            "action": "ownership_claim",
+            "claim_id": claim_id,
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_owner,
+        }
+        claim_sig = _sign_payload(claim_payload, sk_agent)
+        claim = client.post(
+            "/ownership/claim",
+            json={
+                "claim_id": claim_id,
+                "agent_pubkey": pk_agent,
+                "human_pubkey": pk_owner,
+                "signature": claim_sig,
+            },
+        )
+        assert claim.status_code == 200
+
+        confirm_payload = {
+            "action": "ownership_confirm",
+            "claim_id": claim_id,
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_owner,
+        }
+        confirm_sig = _sign_payload(confirm_payload, sk_owner)
+        confirm = client.post(
+            "/ownership/confirm",
+            json={
+                "claim_id": claim_id,
+                "human_pubkey": pk_owner,
+                "signature": confirm_sig,
+            },
+        )
+        assert confirm.status_code == 200
+        return pk_agent, pk_owner
+
+    def _set_baseline(self, client, sk_owner: SigningKey, pk_agent: str, pk_owner: str, baseline_id: str):
+        file_hashes = _sample_file_hashes(1)
+        payload = {
+            "action": "integrity_set_baseline",
+            "baseline_id": baseline_id,
+            "agent_pubkey": pk_agent,
+            "owner_pubkey": pk_owner,
+            "file_hashes": file_hashes,
+        }
+        signature = _sign_payload(payload, sk_owner)
+        return client.post(
+            "/integrity/baseline/set",
+            json={
+                "baseline_id": baseline_id,
+                "agent_pubkey": pk_agent,
+                "owner_pubkey": pk_owner,
+                "file_hashes": file_hashes,
+                "signature": signature,
+            },
+        )
+
+    def _integrity_check(self, client, sk_agent: SigningKey, pk_agent: str, file_hashes: list[dict]):
+        payload = {
+            "action": "integrity_check",
+            "agent_pubkey": pk_agent,
+            "file_hashes": file_hashes,
+        }
+        signature = _sign_payload(payload, sk_agent)
+        return client.post(
+            "/integrity/check",
+            json={
+                "agent_pubkey": pk_agent,
+                "file_hashes": file_hashes,
+                "signature": signature,
+            },
+        )
+
+    def test_set_baseline_requires_active_owner(self, client):
+        sk_agent = SigningKey.generate()
+        sk_owner = SigningKey.generate()
+        pk_agent = _pubkey(sk_agent)
+        pk_owner = _pubkey(sk_owner)
+
+        registration_limiter._timestamps.clear()
+        client.post("/register", json={"pubkey": pk_agent, "name": "AgentOne", "type": "agent"})
+        registration_limiter._timestamps.clear()
+        client.post("/register", json={"pubkey": pk_owner, "name": "OwnerOne", "type": "human"})
+
+        denied = self._set_baseline(
+            client=client,
+            sk_owner=sk_owner,
+            pk_agent=pk_agent,
+            pk_owner=pk_owner,
+            baseline_id="baseline1001",
+        )
+        assert denied.status_code == 403
+        assert "active owner" in denied.json()["error"].lower()
+
+    def test_integrity_green_path_and_status(self, client):
+        sk_agent = SigningKey.generate()
+        sk_owner = SigningKey.generate()
+        pk_agent, pk_owner = self._link_agent_to_owner(
+            client=client,
+            sk_agent=sk_agent,
+            sk_owner=sk_owner,
+            claim_id="ownclaim10",
+        )
+
+        baseline = self._set_baseline(
+            client=client,
+            sk_owner=sk_owner,
+            pk_agent=pk_agent,
+            pk_owner=pk_owner,
+            baseline_id="baseline1002",
+        )
+        assert baseline.status_code == 200
+        baseline_data = baseline.json()
+        assert baseline_data["status"] == "baseline_set"
+        assert baseline_data["traffic_light"] == "yellow"
+        assert baseline_data["status_label"] == "baseline_set_not_checked"
+        assert baseline_data["requires_owner_reapproval"] is True
+
+        status_after_baseline = client.get(f"/integrity/status/{pk_agent}")
+        assert status_after_baseline.status_code == 200
+        assert status_after_baseline.json()["traffic_light"] == "yellow"
+
+        check = self._integrity_check(
+            client=client,
+            sk_agent=sk_agent,
+            pk_agent=pk_agent,
+            file_hashes=_sample_file_hashes(1),
+        )
+        assert check.status_code == 200
+        check_data = check.json()
+        assert check_data["status"] == "green"
+        assert check_data["traffic_light"] == "green"
+        assert check_data["recommended_action"] == "safe_to_run"
+        assert check_data["requires_owner_reapproval"] is False
+        assert check_data["diff"]["added_paths"] == []
+        assert check_data["diff"]["removed_paths"] == []
+        assert check_data["diff"]["changed_paths"] == []
+
+        status_after_check = client.get(f"/integrity/status/{pk_agent}")
+        assert status_after_check.status_code == 200
+        status_data = status_after_check.json()
+        assert status_data["traffic_light"] == "green"
+        assert status_data["status_label"] == "verified"
+        assert status_data["recommended_action"] == "safe_to_run"
+
+    def test_integrity_detects_change_and_requires_reapproval(self, client):
+        sk_agent = SigningKey.generate()
+        sk_owner = SigningKey.generate()
+        pk_agent, pk_owner = self._link_agent_to_owner(
+            client=client,
+            sk_agent=sk_agent,
+            sk_owner=sk_owner,
+            claim_id="ownclaim11",
+        )
+
+        baseline = self._set_baseline(
+            client=client,
+            sk_owner=sk_owner,
+            pk_agent=pk_agent,
+            pk_owner=pk_owner,
+            baseline_id="baseline1003",
+        )
+        assert baseline.status_code == 200
+
+        changed = self._integrity_check(
+            client=client,
+            sk_agent=sk_agent,
+            pk_agent=pk_agent,
+            file_hashes=_sample_file_hashes(2),
+        )
+        assert changed.status_code == 200
+        changed_data = changed.json()
+        assert changed_data["status"] == "yellow"
+        assert changed_data["traffic_light"] == "yellow"
+        assert changed_data["status_label"] == "changed_since_baseline"
+        assert changed_data["requires_owner_reapproval"] is True
+        assert changed_data["diff"]["changed_paths"] == ["agent.py"]
+
+        status = client.get(f"/integrity/status/{pk_agent}")
+        assert status.status_code == 200
+        status_data = status.json()
+        assert status_data["traffic_light"] == "yellow"
+        assert status_data["status_label"] == "changed_since_baseline"
 
 
 # ===== Taxonomy =====
@@ -1064,7 +1275,50 @@ class TestTrustAnalysis:
         assert linked.status_code == 200
         linked_data = linked.json()
         assert linked_data["accountability"]["tier"] == "human-linked"
-        assert linked_data["deployability_score"] == linked_data["reputation_score"]
+        assert linked_data["integrity"]["traffic_light"] == "red"
+        assert linked_data["deployability_score"] < linked_data["reputation_score"]
+
+        baseline_payload = {
+            "action": "integrity_set_baseline",
+            "baseline_id": "baseline1004",
+            "agent_pubkey": pk_agent,
+            "owner_pubkey": pk_human,
+            "file_hashes": _sample_file_hashes(1),
+        }
+        baseline_sig = _sign_payload(baseline_payload, sk_c)
+        set_baseline = client.post(
+            "/integrity/baseline/set",
+            json={
+                "baseline_id": "baseline1004",
+                "agent_pubkey": pk_agent,
+                "owner_pubkey": pk_human,
+                "file_hashes": _sample_file_hashes(1),
+                "signature": baseline_sig,
+            },
+        )
+        assert set_baseline.status_code == 200
+
+        check_payload = {
+            "action": "integrity_check",
+            "agent_pubkey": pk_agent,
+            "file_hashes": _sample_file_hashes(1),
+        }
+        check_sig = _sign_payload(check_payload, sk_b)
+        check = client.post(
+            "/integrity/check",
+            json={
+                "agent_pubkey": pk_agent,
+                "file_hashes": _sample_file_hashes(1),
+                "signature": check_sig,
+            },
+        )
+        assert check.status_code == 200
+
+        verified = client.get(f"/trust/analysis/{pk_agent}")
+        assert verified.status_code == 200
+        verified_data = verified.json()
+        assert verified_data["integrity"]["traffic_light"] == "green"
+        assert verified_data["deployability_score"] == verified_data["reputation_score"]
 
 
 class TestRiskSignals:
