@@ -326,6 +326,24 @@ class TestContacts:
         names = {c["name"] for c in contacts}
         assert names == {"Alice", "Bob"}
 
+    def test_public_known_key_queries(self, store):
+        pk1 = _make_pubkey(1)
+        pk2 = _make_pubkey(2)
+        store.register_known_key(pk1, name="Alice", attestor_type="agent")
+        store.register_known_key(pk2, name="Bob", attestor_type="human")
+
+        assert store.count_known_keys() == 2
+
+        row = store.get_known_key(pk1)
+        assert row is not None
+        assert row["name"] == "Alice"
+        assert row["type"] == "agent"
+
+        listed = store.list_known_keys(limit=10, offset=0)
+        assert len(listed) == 2
+        listed_pubkeys = {item["pubkey"] for item in listed}
+        assert listed_pubkeys == {pk1, pk2}
+
     def test_register_known_key_conflict_does_not_overwrite_metadata(self, store):
         pk = _make_pubkey(1)
         store.register_known_key(pk, name="Alice", attestor_type="human")

@@ -17,6 +17,7 @@ from kredo._canonical import canonical_json
 from kredo.api.app import _get_cors_settings, app
 from kredo.api.deps import close_store, init_store
 from kredo.api.rate_limit import registration_limiter, submission_limiter
+from kredo.api.trust_cache import invalidate_trust_cache
 from kredo.taxonomy import invalidate_cache as _invalidate_taxonomy_cache, set_store as _set_taxonomy_store
 from kredo.evidence import score_evidence
 from kredo.models import (
@@ -50,10 +51,12 @@ def _fresh_store(tmp_path):
     db_path = tmp_path / "test_api.db"
     store = init_store(db_path=db_path)
     _set_taxonomy_store(store)
+    invalidate_trust_cache()
     # Reset rate limiters
     submission_limiter._timestamps.clear()
     registration_limiter._timestamps.clear()
     yield
+    invalidate_trust_cache()
     _invalidate_taxonomy_cache()
     close_store()
 
@@ -895,3 +898,31 @@ class TestTrustAnalysis:
         # Skills include weighted_avg_proficiency
         assert len(data["skills"]) == 1
         assert "weighted_avg_proficiency" in data["skills"][0]
+
+    def test_trust_cache_invalidated_on_attestation_write(self, client, sk_a, pk_b):
+        """Repeated read should hit cache, then write should invalidate it."""
+        att_data = _make_signed_attestation(sk_a, pk_b)
+        client.post("/attestations", json=att_data)
+
+        first = client.get(f"/trust/analysis/{pk_b}")
+        assert first.status_code == 200
+        first_data = first.json()
+        first_ts = first_data["analysis_timestamp"]
+        assert len(first_data["attestation_weights"]) == 1
+
+        second = client.get(f"/trust/analysis/{pk_b}")
+        assert second.status_code == 200
+        second_data = second.json()
+        assert second_data["analysis_timestamp"] == first_ts
+        assert len(second_data["attestation_weights"]) == 1
+
+        submission_limiter._timestamps.clear()
+        sk_c = SigningKey.generate()
+        second_att = _make_signed_attestation(sk_c, pk_b, specific="threat-hunting")
+        client.post("/attestations", json=second_att)
+
+        third = client.get(f"/trust/analysis/{pk_b}")
+        assert third.status_code == 200
+        third_data = third.json()
+        assert third_data["analysis_timestamp"] != first_ts
+        assert len(third_data["attestation_weights"]) == 2

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from kredo.api.deps import get_store
 from kredo.api.rate_limit import submission_limiter
+from kredo.api.trust_cache import invalidate_trust_cache
 from kredo.exceptions import InvalidSignatureError
 from kredo.models import Dispute, Revocation
 from kredo.signing import verify_dispute, verify_revocation
@@ -81,6 +82,7 @@ async def submit_revocation(
     # Store revocation
     json_str = rev.model_dump_json()
     rev_id = store.save_revocation(json_str)
+    invalidate_trust_cache()
     submission_limiter.record(revoker_key)
 
     return {
@@ -157,6 +159,7 @@ async def submit_dispute(
     # Store dispute
     json_str = disp.model_dump_json()
     disp_id = store.save_dispute(json_str)
+    invalidate_trust_cache()
     submission_limiter.record(disputor_key)
 
     return {

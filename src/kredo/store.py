@@ -232,6 +232,30 @@ class KredoStore:
         except sqlite3.Error as e:
             raise StoreError(f"Failed to register key: {e}") from e
 
+    def get_known_key(self, pubkey: str) -> Optional[dict]:
+        """Get one known key by pubkey."""
+        row = self._conn.execute(
+            "SELECT pubkey, name, type, first_seen, last_seen FROM known_keys WHERE pubkey = ?",
+            (pubkey,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_known_keys(self, limit: int = 50, offset: int = 0) -> list[dict]:
+        """List known keys in registration order (newest first)."""
+        rows = self._conn.execute(
+            "SELECT pubkey, name, type, first_seen, last_seen "
+            "FROM known_keys ORDER BY first_seen DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_known_keys(self) -> int:
+        """Count total registered known keys."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) as cnt FROM known_keys",
+        ).fetchone()
+        return int(row["cnt"]) if row else 0
+
     def update_known_key_identity(self, pubkey: str, name: str, attestor_type: str) -> None:
         """Update known-key metadata after signature verification."""
         try:

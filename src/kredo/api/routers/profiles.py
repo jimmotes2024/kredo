@@ -12,13 +12,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from kredo.api.deps import get_known_key, get_store
+from kredo.api.trust_cache import get_cached_agent_analysis
 from kredo.evidence import score_evidence
 from kredo.models import AttestationType, Evidence
 from kredo.store import KredoStore
-from kredo.trust_analysis import (
-    analyze_agent,
-    detect_all_rings,
-)
 
 router = APIRouter(tags=["profiles"])
 
@@ -109,16 +106,20 @@ async def agent_profile(
         })
 
     # Trust analysis: reputation score, ring flags, weighted skills
-    analysis = analyze_agent(store, pubkey)
+    analysis_payload = get_cached_agent_analysis(store, pubkey)
     ring_flags = [
-        {"ring_type": r.ring_type, "members": r.members, "size": r.size}
-        for r in analysis.rings_involved
+        {
+            "ring_type": ring.get("ring_type"),
+            "members": ring.get("members", []),
+            "size": ring.get("size"),
+        }
+        for ring in analysis_payload.get("rings_involved", [])
     ]
 
     # Enrich skills with weighted_avg_proficiency from trust analysis
     weighted_skill_map = {
         f"{ws['domain']}:{ws['specific']}": ws.get("weighted_avg_proficiency", 0)
-        for ws in analysis.weighted_skills
+        for ws in analysis_payload.get("weighted_skills", [])
     }
     for skill in skills:
         key = f"{skill['domain']}:{skill['specific']}"
@@ -140,7 +141,7 @@ async def agent_profile(
         "evidence_quality_avg": avg_evidence_quality,
         "trust_network": trust_network,
         "trust_analysis": {
-            "reputation_score": analysis.reputation_score,
+            "reputation_score": analysis_payload.get("reputation_score", 0.0),
             "ring_flags": ring_flags,
         },
     }

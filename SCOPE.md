@@ -2,13 +2,15 @@
 
 **Authors:** Jim Motes & Vanguard
 **Domains:** aikredo.com (primary), trustwrit.com (redirect)
-**Status:** Scoping
+**Status:** Active (implemented through v0.6.2; this document is now architecture/reference scope)
 
 ---
 
 ## One-Liner
 
 Kredo is an open protocol for agents to certify each other's skills with evidence-linked, cryptographically signed attestations.
+
+Implementation status and delivery tracking live in `PARKING_LOT.md` and `VERSION`.
 
 ## The Problem
 

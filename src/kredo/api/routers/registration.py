@@ -17,6 +17,7 @@ from pydantic import BaseModel, field_validator
 from kredo.api.deps import count_known_keys, get_known_key, get_store, list_known_keys
 from kredo.api.rate_limit import registration_limiter
 from kredo.api.signatures import verify_signed_payload
+from kredo.api.trust_cache import invalidate_trust_cache
 from kredo.exceptions import KeyNotFoundError
 from kredo.store import KredoStore
 
@@ -113,6 +114,7 @@ async def register_agent(
         name=body.name,
         attestor_type=body.type,
     )
+    invalidate_trust_cache()
     registration_limiter.record(client_ip)
 
     return {
@@ -153,6 +155,7 @@ async def update_registered_agent(
             name=body.name,
             attestor_type=body.type,
         )
+        invalidate_trust_cache()
     except KeyNotFoundError as e:
         return JSONResponse(status_code=404, content={"error": str(e)})
 

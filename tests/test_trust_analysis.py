@@ -151,6 +151,16 @@ class TestRingDetection:
 
         assert detect_mutual_pairs(store) == []
 
+    def test_self_attestation_does_not_create_ring_or_recurse(self, store):
+        sk_a, pk_a = _make_key()
+        att = _make_signed_attestation(sk_a, pk_a, pk_a)
+        _store_attestation(store, att)
+
+        pairs = detect_mutual_pairs(store)
+        cliques = detect_cliques(store, min_size=3)
+        assert pairs == []
+        assert cliques == []
+
     def test_three_agent_clique(self, store):
         sk_a, pk_a = _make_key()
         sk_b, pk_b = _make_key()

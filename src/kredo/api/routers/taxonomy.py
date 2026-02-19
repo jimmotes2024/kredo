@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from kredo.api.deps import get_known_key, get_store
 from kredo.api.signatures import verify_signed_payload
+from kredo.api.trust_cache import invalidate_trust_cache
 from kredo.exceptions import StoreError
 from kredo.store import KredoStore
 from kredo.taxonomy import (
@@ -127,6 +128,7 @@ async def create_domain(
     try:
         store.create_custom_domain(body.id, body.label, body.pubkey)
         invalidate_cache()
+        invalidate_trust_cache()
     except StoreError as e:
         return JSONResponse(status_code=409, content={"error": str(e)})
 
@@ -167,6 +169,7 @@ async def create_skill(
     try:
         store.create_custom_skill(domain, body.id, body.pubkey)
         invalidate_cache()
+        invalidate_trust_cache()
     except StoreError as e:
         return JSONResponse(status_code=409, content={"error": str(e)})
 
@@ -189,6 +192,7 @@ async def delete_domain(
     try:
         store.delete_custom_domain(domain, body.pubkey)
         invalidate_cache()
+        invalidate_trust_cache()
     except StoreError as e:
         return JSONResponse(status_code=403, content={"error": str(e)})
 
@@ -212,6 +216,7 @@ async def delete_skill(
     try:
         store.delete_custom_skill(domain, skill, body.pubkey)
         invalidate_cache()
+        invalidate_trust_cache()
     except StoreError as e:
         return JSONResponse(status_code=403, content={"error": str(e)})
 

@@ -102,6 +102,8 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 
 Full API documentation: [aikredo.com/_functions/skill](https://aikredo.com/_functions/skill)
 
+Runtime note: trust-analysis responses are short-TTL cached in-process (`KREDO_TRUST_CACHE_TTL_SECONDS`, default `30`).
+
 ## Skill Taxonomy
 
 7 domains, 54 specific skills:

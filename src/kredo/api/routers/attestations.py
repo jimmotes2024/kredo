@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from kredo.api.trust_cache import invalidate_trust_cache
 from kredo.api.deps import get_store
 from kredo.api.rate_limit import submission_limiter
 from kredo.evidence import score_evidence
@@ -91,6 +92,7 @@ async def submit_attestation(
     # Auto-register pubkeys
     store.register_known_key(att.attestor.pubkey, att.attestor.name, att.attestor.type.value)
     store.register_known_key(att.subject.pubkey, att.subject.name)
+    invalidate_trust_cache()
 
     submission_limiter.record(attestor_key)
 

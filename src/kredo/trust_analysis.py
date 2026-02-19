@@ -91,6 +91,9 @@ def detect_mutual_pairs(store: KredoStore) -> list[RingInfo]:
     seen = set()
     pairs = []
     for a, b in edges:
+        if a == b:
+            # Self-attestations are not mutual pairs and can create graph loops.
+            continue
         pair_key = tuple(sorted([a, b]))
         if pair_key in seen:
             continue
@@ -122,6 +125,9 @@ def detect_cliques(store: KredoStore, min_size: int = 3) -> list[RingInfo]:
     edge_set = set(edges)
     mutual_graph: dict[str, set[str]] = {}
     for a, b in edges:
+        if a == b:
+            # Ignore self-loop edges to avoid degenerate clique recursion.
+            continue
         if (b, a) in edge_set:
             mutual_graph.setdefault(a, set()).add(b)
             mutual_graph.setdefault(b, set()).add(a)

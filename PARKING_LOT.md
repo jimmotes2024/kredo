@@ -15,6 +15,15 @@
 
 ---
 
+## API Reliability Follow-Up — COMPLETE (v0.6.2)
+
+- [x] **Store abstraction cleanup** — API deps no longer query `store._conn` directly for known-key operations
+- [x] **Known-key query API** — added `get_known_key`, `list_known_keys`, and `count_known_keys` methods on `KredoStore`
+- [x] **Trust-analysis caching** — short-TTL in-process cache for `/trust/analysis`, `/trust/rings`, and `/trust/network-health`
+- [x] **Cache invalidation on writes** — trust cache clears on registration, attestation submission, revocation/dispute, and taxonomy mutations
+
+---
+
 ## Agent Accessibility — RESOLVED
 
 ~~Wix renders everything client-side (JavaScript). AI agents cannot render the site.~~

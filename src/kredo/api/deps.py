@@ -51,27 +51,17 @@ def list_known_keys(
     offset: int = 0,
 ) -> list[dict]:
     """List registered agents/humans from known_keys table."""
-    rows = store._conn.execute(
-        "SELECT pubkey, name, type, first_seen, last_seen "
-        "FROM known_keys ORDER BY first_seen DESC LIMIT ? OFFSET ?",
-        (limit, offset),
-    ).fetchall()
-    return [dict(r) for r in rows]
+    return store.list_known_keys(limit=limit, offset=offset)
 
 
 def get_known_key(store: KredoStore, pubkey: str) -> Optional[dict]:
     """Get a single known key by pubkey."""
-    row = store._conn.execute(
-        "SELECT pubkey, name, type, first_seen, last_seen FROM known_keys WHERE pubkey = ?",
-        (pubkey,),
-    ).fetchone()
-    return dict(row) if row else None
+    return store.get_known_key(pubkey)
 
 
 def count_known_keys(store: KredoStore) -> int:
     """Count total registered keys."""
-    row = store._conn.execute("SELECT COUNT(*) as cnt FROM known_keys").fetchone()
-    return row["cnt"]
+    return store.count_known_keys()
 
 
 def count_attestations(store: KredoStore, include_revoked: bool = False) -> int:
