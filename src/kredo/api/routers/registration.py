@@ -101,6 +101,14 @@ async def register_agent(
     client_ip = request.client.host if request.client else "unknown"
     if not registration_limiter.is_allowed(client_ip, cooldown_seconds=60):
         remaining = registration_limiter.remaining_seconds(client_ip, 60)
+        store.append_audit_event(
+            action="registration.create",
+            outcome="rejected",
+            actor_pubkey=body.pubkey,
+            source_ip=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "rate_limited", "retry_after_seconds": round(remaining, 1)},
+        )
         return JSONResponse(
             status_code=429,
             content={
@@ -115,6 +123,14 @@ async def register_agent(
         attestor_type=body.type,
     )
     invalidate_trust_cache()
+    store.append_audit_event(
+        action="registration.create",
+        outcome="accepted",
+        actor_pubkey=body.pubkey,
+        source_ip=client_ip,
+        user_agent=request.headers.get("user-agent"),
+        details={"type": body.type},
+    )
     registration_limiter.record(client_ip)
 
     return {
@@ -128,6 +144,7 @@ async def register_agent(
 @router.post("/register/update")
 async def update_registered_agent(
     body: RegisterUpdateRequest,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Signed metadata update for a previously registered key."""
@@ -147,6 +164,14 @@ async def update_registered_agent(
     try:
         verify_signed_payload(payload, body.pubkey, body.signature)
     except ValueError as e:
+        store.append_audit_event(
+            action="registration.update",
+            outcome="rejected",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": str(e)},
+        )
         return JSONResponse(status_code=400, content={"error": str(e)})
 
     try:
@@ -156,6 +181,14 @@ async def update_registered_agent(
             attestor_type=body.type,
         )
         invalidate_trust_cache()
+        store.append_audit_event(
+            action="registration.update",
+            outcome="accepted",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"type": body.type},
+        )
     except KeyNotFoundError as e:
         return JSONResponse(status_code=404, content={"error": str(e)})
 

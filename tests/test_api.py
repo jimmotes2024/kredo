@@ -330,6 +330,85 @@ class TestRegistration:
         assert r.status_code == 404
 
 
+class TestOwnership:
+    def test_ownership_claim_confirm_and_lookup(self, client, sk_a, sk_b):
+        pk_agent = _pubkey(sk_a)
+        pk_human = _pubkey(sk_b)
+
+        r1 = client.post("/register", json={"pubkey": pk_agent, "name": "AgentOne", "type": "agent"})
+        assert r1.status_code == 200
+        registration_limiter._timestamps.clear()
+        r2 = client.post("/register", json={"pubkey": pk_human, "name": "OwnerOne", "type": "human"})
+        assert r2.status_code == 200
+
+        claim_payload = {
+            "action": "ownership_claim",
+            "claim_id": "ownclaim01",
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_human,
+        }
+        claim_sig = _sign_payload(claim_payload, sk_a)
+        claim = client.post(
+            "/ownership/claim",
+            json={
+                "claim_id": "ownclaim01",
+                "agent_pubkey": pk_agent,
+                "human_pubkey": pk_human,
+                "signature": claim_sig,
+            },
+        )
+        assert claim.status_code == 200
+        assert claim.json()["status"] == "pending"
+
+        confirm_payload = {
+            "action": "ownership_confirm",
+            "claim_id": "ownclaim01",
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_human,
+        }
+        confirm_sig = _sign_payload(confirm_payload, sk_b)
+        confirm = client.post(
+            "/ownership/confirm",
+            json={
+                "claim_id": "ownclaim01",
+                "human_pubkey": pk_human,
+                "signature": confirm_sig,
+                "contact_email": "owner.one@example.com",
+            },
+        )
+        assert confirm.status_code == 200
+        assert confirm.json()["status"] == "active"
+        assert confirm.json()["contact_email_saved"] is True
+
+        lookup = client.get(f"/ownership/agent/{pk_agent}")
+        assert lookup.status_code == 200
+        assert lookup.json()["active_owner"]["human_pubkey"] == pk_human
+        assert len(lookup.json()["claims"]) == 1
+
+    def test_ownership_claim_requires_human_registration(self, client, sk_a, sk_b):
+        pk_agent = _pubkey(sk_a)
+        pk_human = _pubkey(sk_b)
+        client.post("/register", json={"pubkey": pk_agent, "name": "AgentOne", "type": "agent"})
+
+        payload = {
+            "action": "ownership_claim",
+            "claim_id": "ownclaim02",
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_human,
+        }
+        signature = _sign_payload(payload, sk_a)
+        r = client.post(
+            "/ownership/claim",
+            json={
+                "claim_id": "ownclaim02",
+                "agent_pubkey": pk_agent,
+                "human_pubkey": pk_human,
+                "signature": signature,
+            },
+        )
+        assert r.status_code == 404
+
+
 # ===== Taxonomy =====
 
 class TestTaxonomy:
@@ -926,3 +1005,82 @@ class TestTrustAnalysis:
         third_data = third.json()
         assert third_data["analysis_timestamp"] != first_ts
         assert len(third_data["attestation_weights"]) == 2
+
+    def test_accountability_tier_unlinked_and_human_linked(self, client, sk_a, sk_b):
+        """Unlinked agents get accountability multiplier; linked agents move to human-linked."""
+        pk_attestor = _pubkey(sk_a)
+        pk_agent = _pubkey(sk_b)
+        sk_c = SigningKey.generate()
+        pk_human = _pubkey(sk_c)
+
+        att_data = _make_signed_attestation(sk_a, pk_agent)
+        client.post("/attestations", json=att_data)
+
+        baseline = client.get(f"/trust/analysis/{pk_agent}")
+        assert baseline.status_code == 200
+        baseline_data = baseline.json()
+        assert baseline_data["reputation_score"] > 0
+        assert baseline_data["accountability"]["tier"] == "unlinked"
+        assert baseline_data["deployability_score"] < baseline_data["reputation_score"]
+
+        registration_limiter._timestamps.clear()
+        client.post("/register", json={"pubkey": pk_human, "name": "Owner", "type": "human"})
+        registration_limiter._timestamps.clear()
+        client.post("/register", json={"pubkey": pk_agent, "name": "Agent", "type": "agent"})
+
+        claim_payload = {
+            "action": "ownership_claim",
+            "claim_id": "ownclaim03",
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_human,
+        }
+        claim_sig = _sign_payload(claim_payload, sk_b)
+        client.post(
+            "/ownership/claim",
+            json={
+                "claim_id": "ownclaim03",
+                "agent_pubkey": pk_agent,
+                "human_pubkey": pk_human,
+                "signature": claim_sig,
+            },
+        )
+        confirm_payload = {
+            "action": "ownership_confirm",
+            "claim_id": "ownclaim03",
+            "agent_pubkey": pk_agent,
+            "human_pubkey": pk_human,
+        }
+        confirm_sig = _sign_payload(confirm_payload, sk_c)
+        client.post(
+            "/ownership/confirm",
+            json={
+                "claim_id": "ownclaim03",
+                "human_pubkey": pk_human,
+                "signature": confirm_sig,
+            },
+        )
+
+        linked = client.get(f"/trust/analysis/{pk_agent}")
+        assert linked.status_code == 200
+        linked_data = linked.json()
+        assert linked_data["accountability"]["tier"] == "human-linked"
+        assert linked_data["deployability_score"] == linked_data["reputation_score"]
+
+
+class TestRiskSignals:
+    def test_source_anomalies_endpoint(self, client):
+        for idx in range(4):
+            registration_limiter._timestamps.clear()
+            sk = SigningKey.generate()
+            pk = _pubkey(sk)
+            client.post(
+                "/register",
+                json={"pubkey": pk, "name": f"actor-{idx}", "type": "agent"},
+            )
+
+        r = client.get("/risk/source-anomalies?hours=24&min_events=3&min_unique_actors=3")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["cluster_count"] >= 1
+        assert data["clusters"][0]["event_count"] >= 3
+        assert data["clusters"][0]["unique_actor_count"] >= 3

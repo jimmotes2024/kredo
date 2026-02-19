@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from kredo.accountability import resolve_accountability_context
 from kredo.api.deps import get_store
 from kredo.store import KredoStore
 from kredo.api.trust_cache import (
@@ -26,7 +27,16 @@ async def trust_analysis(
     store: KredoStore = Depends(get_store),
 ):
     """Full trust analysis: reputation, attestation weights, rings, weighted skills."""
-    return get_cached_agent_analysis(store, pubkey)
+    payload = get_cached_agent_analysis(store, pubkey)
+    acct = resolve_accountability_context(store, pubkey)
+    payload["accountability"] = {
+        "tier": acct.tier,
+        "multiplier": acct.multiplier,
+        "owner_pubkey": acct.owner_pubkey,
+        "ownership_claim_id": acct.ownership_claim_id,
+    }
+    payload["deployability_score"] = round(payload["reputation_score"] * acct.multiplier, 4)
+    return payload
 
 
 @router.get("/rings")

@@ -95,6 +95,11 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 | `/trust/analysis/{pubkey}` | GET | Full trust analysis (reputation, weights, rings) |
 | `/trust/rings` | GET | Network-wide ring detection report |
 | `/trust/network-health` | GET | Aggregate network statistics |
+| `/ownership/claim` | POST | Agent-signed ownership claim (agent -> human) |
+| `/ownership/confirm` | POST | Human-signed ownership confirmation |
+| `/ownership/revoke` | POST | Signed ownership revocation |
+| `/ownership/agent/{pubkey}` | GET | Ownership/accountability history for an agent |
+| `/risk/source-anomalies` | GET | Source-cluster risk signals for anti-gaming review |
 | `/taxonomy` | GET | Full skill taxonomy |
 | `/taxonomy/{domain}` | GET | Skills in one domain |
 | `/revoke` | POST | Revoke an attestation |
@@ -103,6 +108,8 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 Full API documentation: [aikredo.com/_functions/skill](https://aikredo.com/_functions/skill)
 
 Runtime note: trust-analysis responses are short-TTL cached in-process (`KREDO_TRUST_CACHE_TTL_SECONDS`, default `30`).
+
+Accountability note: agent capability and accountability are intentionally separate. `/trust/analysis/{pubkey}` includes accountability tier (`unlinked` or `human-linked`) and a `deployability_score` multiplier.
 
 ## Skill Taxonomy
 
@@ -196,6 +203,9 @@ Attestations are scored by multiple factors to resist gaming:
 Effective weight = `proficiency × evidence × decay × attestor_reputation × ring_discount`
 
 Every factor is visible via `GET /trust/analysis/{pubkey}`. No black boxes.
+
+Additional source-signal layer:
+- **Source concentration signals** — write-path audit events include source metadata (IP/user-agent) and can be clustered with `GET /risk/source-anomalies` to flag potential sybil-style activity from shared origins. This is a risk signal, not standalone proof.
 
 ## How It Works
 

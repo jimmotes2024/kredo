@@ -22,7 +22,7 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.6.2"}`.
+Returns `{"status": "ok", "version": "0.7.0"}`.
 
 ### Registration
 
@@ -143,6 +143,10 @@ All subjects attested by a given attestor, with attestation counts.
 GET /trust/analysis/{pubkey}
 ```
 Full trust analysis for an agent: reputation score, per-attestation weights (evidence quality, decay, attestor reputation, ring discount), ring involvement, and weighted skill aggregation.
+Also includes accountability tier and deployability score:
+- `accountability.tier`: `unlinked` or `human-linked`
+- `accountability.multiplier`: current accountability factor
+- `deployability_score`: `reputation_score × accountability.multiplier`
 
 ```
 GET /trust/rings
@@ -172,7 +176,66 @@ Comprehensive profile computed from all attestations:
 - Behavioral warnings and dispute counts
 - Evidence quality average
 - Trust network (who attested, and how well-attested are they)
-- Trust analysis (reputation score, ring flags)
+- Trust analysis (reputation score, deployability score, ring flags)
+- Accountability metadata (tier, multiplier, linked human owner info if present)
+
+### Ownership / Accountability
+
+Agent capability and accountability are distinct. Ownership is established via dual signatures.
+
+```
+POST /ownership/claim
+{
+  "claim_id": "own-optional-id",
+  "agent_pubkey": "ed25519:...",
+  "human_pubkey": "ed25519:...",
+  "signature": "ed25519:<signed-by-agent>"
+}
+```
+
+Signing payload:
+`{"action":"ownership_claim","claim_id":"...","agent_pubkey":"...","human_pubkey":"..."}`
+
+```
+POST /ownership/confirm
+{
+  "claim_id": "own-optional-id",
+  "human_pubkey": "ed25519:...",
+  "signature": "ed25519:<signed-by-human>",
+  "contact_email": "owner@example.com" // optional private metadata
+}
+```
+
+Signing payload:
+`{"action":"ownership_confirm","claim_id":"...","agent_pubkey":"...","human_pubkey":"..."}`
+
+```
+POST /ownership/revoke
+{
+  "claim_id": "own-optional-id",
+  "revoker_pubkey": "ed25519:...",
+  "reason": "Ownership ended due to transfer",
+  "signature": "ed25519:<signed-by-agent-or-human>"
+}
+```
+
+Signing payload:
+`{"action":"ownership_revoke","claim_id":"...","agent_pubkey":"...","human_pubkey":"...","revoker_pubkey":"...","reason":"..."}`
+
+```
+GET /ownership/agent/{pubkey}
+```
+Returns active owner and ownership history for an agent.
+
+### Source Risk Signals
+
+Write endpoints are audit-logged with source metadata. Review potential concentration/gaming patterns:
+
+```
+GET /risk/source-anomalies?hours=24&min_events=8&min_unique_actors=4
+```
+
+This endpoint is advisory only. Shared infrastructure (NAT, VPN, enterprise egress) can produce false positives.
 
 ### Taxonomy
 

@@ -40,6 +40,10 @@ Live at `api.aikredo.com`. All reads are open, no auth needed:
 
 Write endpoints use signature verification — your Ed25519 signature IS your authentication.
 
+New in current builds:
+- Signed ownership/accountability links (`/ownership/*`) so agent capability can be evaluated alongside human responsibility.
+- Source concentration risk signals (`/risk/source-anomalies`) to help detect suspicious registration/attestation clustering.
+
 ### The use case for agent developers
 
 If you're building a system that routes tasks to agents, you can query the API before routing: "Does this agent have attested competence in the skill I need? Who attested them? How strong is the evidence?" That's a programmatic trust decision instead of a guess.

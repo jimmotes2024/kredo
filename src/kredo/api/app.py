@@ -29,7 +29,9 @@ from kredo import taxonomy as _taxonomy_module
 from kredo.api.routers import (
     attestations,
     profiles,
+    ownership,
     registration,
+    risk,
     revocations,
     search,
     taxonomy,
@@ -150,6 +152,8 @@ app.include_router(attestations.router)
 app.include_router(search.router)
 app.include_router(taxonomy.router)
 app.include_router(revocations.router)
+app.include_router(ownership.router)
+app.include_router(risk.router)
 app.include_router(trust_analysis.router)
 
 

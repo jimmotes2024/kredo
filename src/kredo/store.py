@@ -6,6 +6,7 @@ context manager, check_same_thread=False.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -110,11 +111,60 @@ CREATE TABLE IF NOT EXISTS custom_skills (
     created_at TEXT NOT NULL,
     PRIMARY KEY (domain_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS ownership_links (
+    id TEXT PRIMARY KEY,
+    agent_pubkey TEXT NOT NULL,
+    human_pubkey TEXT NOT NULL,
+    status TEXT NOT NULL,
+    agent_signature TEXT NOT NULL,
+    human_signature TEXT,
+    claim_payload_json TEXT NOT NULL,
+    confirm_payload_json TEXT,
+    claimed_at TEXT NOT NULL,
+    confirmed_at TEXT,
+    revoked_at TEXT,
+    revoked_by TEXT,
+    revoke_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ownership_agent_status ON ownership_links(agent_pubkey, status);
+CREATE INDEX IF NOT EXISTS idx_ownership_human_status ON ownership_links(human_pubkey, status);
+
+CREATE TABLE IF NOT EXISTS human_contacts (
+    pubkey TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    email_verified INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    action TEXT NOT NULL,
+    actor_pubkey TEXT,
+    source_ip TEXT,
+    source_ip_hash TEXT,
+    user_agent TEXT,
+    outcome TEXT NOT NULL,
+    details_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action);
+CREATE INDEX IF NOT EXISTS idx_audit_events_ip_hash ON audit_events(source_ip_hash);
+CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor_pubkey);
 """
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _hash_ip(ip: str | None) -> str | None:
+    if not ip:
+        return None
+    return hashlib.sha256(ip.encode("utf-8")).hexdigest()[:24]
 
 
 class KredoStore:
@@ -273,6 +323,179 @@ class KredoStore:
         except sqlite3.Error as e:
             raise StoreError(f"Failed to update key: {e}") from e
 
+    # --- Ownership / Accountability ---
+
+    def create_ownership_claim(
+        self,
+        claim_id: str,
+        agent_pubkey: str,
+        human_pubkey: str,
+        agent_signature: str,
+        claim_payload_json: str,
+    ) -> None:
+        """Create a pending ownership claim."""
+        now = _now_iso()
+        try:
+            self._conn.execute(
+                """INSERT INTO ownership_links
+                   (id, agent_pubkey, human_pubkey, status, agent_signature,
+                    claim_payload_json, claimed_at)
+                   VALUES (?, ?, ?, 'pending', ?, ?, ?)""",
+                (
+                    claim_id,
+                    agent_pubkey,
+                    human_pubkey,
+                    agent_signature,
+                    claim_payload_json,
+                    now,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            raise StoreError(f"Ownership claim already exists: {claim_id}") from e
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to create ownership claim: {e}") from e
+
+    def get_ownership_claim(self, claim_id: str) -> Optional[dict]:
+        """Get one ownership claim by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM ownership_links WHERE id = ?",
+            (claim_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_ownership_for_agent(self, agent_pubkey: str) -> list[dict]:
+        """List ownership claims for an agent (newest first)."""
+        rows = self._conn.execute(
+            """SELECT * FROM ownership_links
+               WHERE agent_pubkey = ?
+               ORDER BY claimed_at DESC""",
+            (agent_pubkey,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_active_owner(self, agent_pubkey: str) -> Optional[dict]:
+        """Return active ownership link for an agent, if any."""
+        row = self._conn.execute(
+            """SELECT * FROM ownership_links
+               WHERE agent_pubkey = ? AND status = 'active'
+               ORDER BY confirmed_at DESC, claimed_at DESC
+               LIMIT 1""",
+            (agent_pubkey,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def confirm_ownership_claim(
+        self,
+        claim_id: str,
+        human_signature: str,
+        confirm_payload_json: str,
+    ) -> None:
+        """Confirm a pending ownership claim and activate it."""
+        now = _now_iso()
+        try:
+            row = self._conn.execute(
+                "SELECT agent_pubkey, status FROM ownership_links WHERE id = ?",
+                (claim_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyNotFoundError(f"Ownership claim not found: {claim_id}")
+            if row["status"] != "pending":
+                raise StoreError(
+                    f"Ownership claim {claim_id} must be pending to confirm (current: {row['status']})"
+                )
+
+            # Only one active owner per agent at a time.
+            self._conn.execute(
+                """UPDATE ownership_links
+                   SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoke_reason = ?
+                   WHERE agent_pubkey = ? AND status = 'active'""",
+                (now, "system", f"Superseded by ownership claim {claim_id}", row["agent_pubkey"]),
+            )
+            self._conn.execute(
+                """UPDATE ownership_links
+                   SET status = 'active',
+                       human_signature = ?,
+                       confirm_payload_json = ?,
+                       confirmed_at = ?
+                   WHERE id = ?""",
+                (
+                    human_signature,
+                    confirm_payload_json,
+                    now,
+                    claim_id,
+                ),
+            )
+            self._conn.commit()
+        except (KeyNotFoundError, StoreError):
+            raise
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to confirm ownership claim: {e}") from e
+
+    def revoke_ownership_claim(
+        self,
+        claim_id: str,
+        revoked_by: str,
+        reason: str,
+    ) -> None:
+        """Revoke an active or pending ownership claim."""
+        now = _now_iso()
+        try:
+            row = self._conn.execute(
+                "SELECT status FROM ownership_links WHERE id = ?",
+                (claim_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyNotFoundError(f"Ownership claim not found: {claim_id}")
+            if row["status"] == "revoked":
+                return
+
+            self._conn.execute(
+                """UPDATE ownership_links
+                   SET status = 'revoked', revoked_at = ?, revoked_by = ?, revoke_reason = ?
+                   WHERE id = ?""",
+                (now, revoked_by, reason, claim_id),
+            )
+            self._conn.commit()
+        except KeyNotFoundError:
+            raise
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to revoke ownership claim: {e}") from e
+
+    def upsert_human_contact_email(
+        self,
+        pubkey: str,
+        email: str,
+        email_verified: bool = False,
+    ) -> None:
+        """Store private contact email metadata for a human key."""
+        try:
+            self._conn.execute(
+                """INSERT INTO human_contacts (pubkey, email, email_verified, updated_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(pubkey) DO UPDATE
+                   SET email = excluded.email,
+                       email_verified = excluded.email_verified,
+                       updated_at = excluded.updated_at""",
+                (
+                    pubkey,
+                    email,
+                    int(email_verified),
+                    _now_iso(),
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to upsert human contact email: {e}") from e
+
+    def get_human_contact_email(self, pubkey: str) -> Optional[dict]:
+        """Get private contact metadata for a human key."""
+        row = self._conn.execute(
+            "SELECT pubkey, email, email_verified, updated_at FROM human_contacts WHERE pubkey = ?",
+            (pubkey,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def find_key_by_name(self, name: str) -> Optional[dict]:
         """Find a known key or identity by name (case-insensitive)."""
         # Check identities first
@@ -293,6 +516,75 @@ class KredoStore:
         """List all known keys with last seen dates."""
         rows = self._conn.execute(
             "SELECT pubkey, name, type, first_seen, last_seen FROM known_keys ORDER BY last_seen DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # --- Audit / Source Signals ---
+
+    def append_audit_event(
+        self,
+        action: str,
+        outcome: str,
+        actor_pubkey: Optional[str] = None,
+        source_ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        details: Optional[dict] = None,
+    ) -> None:
+        """Append an audit event for a write-path action."""
+        try:
+            self._conn.execute(
+                """INSERT INTO audit_events
+                   (timestamp, action, actor_pubkey, source_ip, source_ip_hash, user_agent, outcome, details_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    _now_iso(),
+                    action,
+                    actor_pubkey,
+                    source_ip,
+                    _hash_ip(source_ip),
+                    user_agent,
+                    outcome,
+                    json.dumps(details) if details is not None else None,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to append audit event: {e}") from e
+
+    def get_source_anomaly_signals(
+        self,
+        hours: int = 24,
+        min_events: int = 8,
+        min_unique_actors: int = 4,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Return potential source clusters for anti-gaming review."""
+        hours_clamped = max(1, min(int(hours), 24 * 30))
+        min_events_clamped = max(1, int(min_events))
+        min_actors_clamped = max(1, int(min_unique_actors))
+        limit_clamped = max(1, min(int(limit), 500))
+
+        cutoff_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        cutoff_iso = (cutoff_dt.timestamp() - hours_clamped * 3600)
+        cutoff = datetime.fromtimestamp(cutoff_iso, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        rows = self._conn.execute(
+            """SELECT source_ip_hash,
+                      MIN(source_ip) as sample_ip,
+                      COUNT(*) as event_count,
+                      COUNT(DISTINCT COALESCE(actor_pubkey, '')) as unique_actor_count,
+                      COUNT(DISTINCT action) as action_type_count,
+                      SUM(CASE WHEN action = 'registration.create' THEN 1 ELSE 0 END) as registration_count,
+                      SUM(CASE WHEN action = 'attestation.submit' THEN 1 ELSE 0 END) as attestation_count,
+                      MAX(timestamp) as last_seen
+               FROM audit_events
+               WHERE timestamp >= ?
+                 AND source_ip_hash IS NOT NULL
+               GROUP BY source_ip_hash
+               HAVING COUNT(*) >= ? AND COUNT(DISTINCT COALESCE(actor_pubkey, '')) >= ?
+               ORDER BY event_count DESC, unique_actor_count DESC
+               LIMIT ?""",
+            (cutoff, min_events_clamped, min_actors_clamped, limit_clamped),
         ).fetchall()
         return [dict(r) for r in rows]
 

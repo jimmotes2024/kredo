@@ -91,3 +91,22 @@ Ed25519 is the same signature algorithm used in SSH keys and secure messaging. I
 ### Portability
 
 An attestation doesn't depend on this site or any site. It's a self-proving document. If Kredo disappeared tomorrow, every attestation ever issued would still be verifiable by anyone with the attestor's public key. That's the point.
+
+### Ownership and Accountability
+
+Capability and accountability are separate.
+
+- **Capability** comes from skill attestations, evidence quality, and trust-analysis weighting.
+- **Accountability** comes from signed ownership links between an agent key and a human key.
+
+Ownership is a two-step cryptographic flow:
+1. Agent signs an ownership claim (`ownership_claim` payload).
+2. Human signs a confirmation (`ownership_confirm` payload).
+
+This creates a `human-linked` tier for enterprise governance and incident accountability, while still allowing unlinked agents to participate in open ecosystems.
+
+### Source-Integrity Risk Signals
+
+Kredo records write-path audit metadata (source IP and user-agent) and exposes source-cluster risk signals. This helps detect concentration patterns that may indicate gaming attempts (for example, many distinct actors originating from one source over a short window).
+
+These are advisory signals, not automatic guilt. Shared infrastructure (NAT, VPN, enterprise egress) can produce false positives.

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from kredo.api.trust_cache import invalidate_trust_cache
@@ -27,6 +27,7 @@ router = APIRouter(tags=["attestations"])
 @router.post("/attestations")
 async def submit_attestation(
     body: dict,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Submit a signed attestation for storage.
@@ -47,6 +48,14 @@ async def submit_attestation(
     attestor_key = att.attestor.pubkey
     if not submission_limiter.is_allowed(attestor_key, cooldown_seconds=60):
         remaining = submission_limiter.remaining_seconds(attestor_key, 60)
+        store.append_audit_event(
+            action="attestation.submit",
+            outcome="rejected",
+            actor_pubkey=attestor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "rate_limited", "retry_after_seconds": round(remaining, 1)},
+        )
         return JSONResponse(
             status_code=429,
             content={
@@ -57,6 +66,14 @@ async def submit_attestation(
 
     # Verify signature
     if not att.signature:
+        store.append_audit_event(
+            action="attestation.submit",
+            outcome="rejected",
+            actor_pubkey=attestor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "missing_signature"},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": "Attestation must be signed (signature field required)"},
@@ -65,6 +82,14 @@ async def submit_attestation(
     try:
         verify_attestation(att)
     except InvalidSignatureError as e:
+        store.append_audit_event(
+            action="attestation.submit",
+            outcome="rejected",
+            actor_pubkey=attestor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": str(e)},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": f"Signature verification failed: {e}"},
@@ -77,6 +102,14 @@ async def submit_attestation(
     else:
         expires = att.expires
     if expires <= now:
+        store.append_audit_event(
+            action="attestation.submit",
+            outcome="rejected",
+            actor_pubkey=attestor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "expired_attestation"},
+        )
         return JSONResponse(
             status_code=422,
             content={"error": "Attestation has already expired"},
@@ -93,6 +126,14 @@ async def submit_attestation(
     store.register_known_key(att.attestor.pubkey, att.attestor.name, att.attestor.type.value)
     store.register_known_key(att.subject.pubkey, att.subject.name)
     invalidate_trust_cache()
+    store.append_audit_event(
+        action="attestation.submit",
+        outcome="accepted",
+        actor_pubkey=attestor_key,
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"attestation_id": att_id, "subject_pubkey": att.subject.pubkey},
+    )
 
     submission_limiter.record(attestor_key)
 

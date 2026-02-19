@@ -6,7 +6,7 @@ POST /dispute — submit a signed dispute against a behavioral warning
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from kredo.api.deps import get_store
@@ -23,6 +23,7 @@ router = APIRouter(tags=["revocations"])
 @router.post("/revoke")
 async def submit_revocation(
     body: dict,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Submit a signed revocation to mark an attestation as revoked.
@@ -41,6 +42,14 @@ async def submit_revocation(
     revoker_key = rev.revoker.pubkey
     if not submission_limiter.is_allowed(revoker_key, cooldown_seconds=60):
         remaining = submission_limiter.remaining_seconds(revoker_key, 60)
+        store.append_audit_event(
+            action="revocation.submit",
+            outcome="rejected",
+            actor_pubkey=revoker_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "rate_limited", "retry_after_seconds": round(remaining, 1)},
+        )
         return JSONResponse(
             status_code=429,
             content={
@@ -51,6 +60,14 @@ async def submit_revocation(
 
     # Verify signature
     if not rev.signature:
+        store.append_audit_event(
+            action="revocation.submit",
+            outcome="rejected",
+            actor_pubkey=revoker_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "missing_signature"},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": "Revocation must be signed"},
@@ -59,6 +76,14 @@ async def submit_revocation(
     try:
         verify_revocation(rev)
     except InvalidSignatureError as e:
+        store.append_audit_event(
+            action="revocation.submit",
+            outcome="rejected",
+            actor_pubkey=revoker_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": str(e)},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": f"Signature verification failed: {e}"},
@@ -83,6 +108,14 @@ async def submit_revocation(
     json_str = rev.model_dump_json()
     rev_id = store.save_revocation(json_str)
     invalidate_trust_cache()
+    store.append_audit_event(
+        action="revocation.submit",
+        outcome="accepted",
+        actor_pubkey=revoker_key,
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"attestation_id": rev.attestation_id, "revocation_id": rev_id},
+    )
     submission_limiter.record(revoker_key)
 
     return {
@@ -95,6 +128,7 @@ async def submit_revocation(
 @router.post("/dispute")
 async def submit_dispute(
     body: dict,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Submit a signed dispute against a behavioral warning.
@@ -113,6 +147,14 @@ async def submit_dispute(
     disputor_key = disp.disputor.pubkey
     if not submission_limiter.is_allowed(disputor_key, cooldown_seconds=60):
         remaining = submission_limiter.remaining_seconds(disputor_key, 60)
+        store.append_audit_event(
+            action="dispute.submit",
+            outcome="rejected",
+            actor_pubkey=disputor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "rate_limited", "retry_after_seconds": round(remaining, 1)},
+        )
         return JSONResponse(
             status_code=429,
             content={
@@ -123,6 +165,14 @@ async def submit_dispute(
 
     # Verify signature
     if not disp.signature:
+        store.append_audit_event(
+            action="dispute.submit",
+            outcome="rejected",
+            actor_pubkey=disputor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": "missing_signature"},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": "Dispute must be signed"},
@@ -131,6 +181,14 @@ async def submit_dispute(
     try:
         verify_dispute(disp)
     except InvalidSignatureError as e:
+        store.append_audit_event(
+            action="dispute.submit",
+            outcome="rejected",
+            actor_pubkey=disputor_key,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"error": str(e)},
+        )
         return JSONResponse(
             status_code=400,
             content={"error": f"Signature verification failed: {e}"},
@@ -160,6 +218,14 @@ async def submit_dispute(
     json_str = disp.model_dump_json()
     disp_id = store.save_dispute(json_str)
     invalidate_trust_cache()
+    store.append_audit_event(
+        action="dispute.submit",
+        outcome="accepted",
+        actor_pubkey=disputor_key,
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"warning_id": disp.warning_id, "dispute_id": disp_id},
+    )
     submission_limiter.record(disputor_key)
 
     return {

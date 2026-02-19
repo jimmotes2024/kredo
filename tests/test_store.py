@@ -386,3 +386,87 @@ class TestContacts:
 
     def test_remove_nonexistent_contact(self, store):
         assert store.remove_contact("Nobody") is False
+
+
+class TestOwnershipAndAudit:
+    def test_ownership_claim_confirm_and_active_owner(self, store):
+        agent = _make_pubkey(101)
+        human = _make_pubkey(202)
+        claim_id = "own-claim-test-1"
+
+        store.register_known_key(agent, name="Agent1", attestor_type="agent")
+        store.register_known_key(human, name="Human1", attestor_type="human")
+
+        store.create_ownership_claim(
+            claim_id=claim_id,
+            agent_pubkey=agent,
+            human_pubkey=human,
+            agent_signature="ed25519:" + "a" * 128,
+            claim_payload_json='{"action":"ownership_claim"}',
+        )
+
+        pending = store.get_ownership_claim(claim_id)
+        assert pending is not None
+        assert pending["status"] == "pending"
+
+        store.confirm_ownership_claim(
+            claim_id=claim_id,
+            human_signature="ed25519:" + "b" * 128,
+            confirm_payload_json='{"action":"ownership_confirm"}',
+        )
+
+        active = store.get_active_owner(agent)
+        assert active is not None
+        assert active["id"] == claim_id
+        assert active["status"] == "active"
+        assert active["human_pubkey"] == human
+
+    def test_ownership_revoke(self, store):
+        agent = _make_pubkey(303)
+        human = _make_pubkey(404)
+        claim_id = "own-claim-test-2"
+
+        store.create_ownership_claim(
+            claim_id=claim_id,
+            agent_pubkey=agent,
+            human_pubkey=human,
+            agent_signature="ed25519:" + "c" * 128,
+            claim_payload_json='{"action":"ownership_claim"}',
+        )
+        store.confirm_ownership_claim(
+            claim_id=claim_id,
+            human_signature="ed25519:" + "d" * 128,
+            confirm_payload_json='{"action":"ownership_confirm"}',
+        )
+
+        store.revoke_ownership_claim(
+            claim_id=claim_id,
+            revoked_by=human,
+            reason="ownership transferred",
+        )
+        row = store.get_ownership_claim(claim_id)
+        assert row is not None
+        assert row["status"] == "revoked"
+        assert row["revoked_by"] == human
+
+    def test_source_anomaly_signals(self, store):
+        for idx in range(4):
+            store.append_audit_event(
+                action="registration.create",
+                outcome="accepted",
+                actor_pubkey=_make_pubkey(idx + 1),
+                source_ip="203.0.113.9",
+                user_agent="pytest",
+                details={"idx": idx},
+            )
+
+        signals = store.get_source_anomaly_signals(
+            hours=24,
+            min_events=3,
+            min_unique_actors=3,
+            limit=10,
+        )
+        assert len(signals) == 1
+        assert signals[0]["event_count"] >= 4
+        assert signals[0]["unique_actor_count"] >= 4
+        assert signals[0]["registration_count"] >= 4

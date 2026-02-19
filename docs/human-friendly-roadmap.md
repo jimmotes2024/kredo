@@ -2,8 +2,8 @@
 
 ## For Vanguard: Instructions to Make Kredo More Accessible to Non-Technical Users
 
-**Package:** `kredo` v0.4.0 on PyPI
-**Current State:** Fully functional CLI + API client + SQLite store, but interaction model is entirely flag-based CLI commands requiring exact taxonomy strings, raw Ed25519 pubkeys, and manual JSON handling.
+**Package:** `kredo` v0.7.0 on PyPI
+**Current State:** Fully functional CLI + API client + SQLite store with accountability/ownership links and anti-gaming source signals. Remaining UX gap: interaction model still leans heavily on flag-based CLI commands requiring exact taxonomy strings and raw Ed25519 pubkeys.
 **Goal:** Make Kredo usable by humans (security analysts, team leads, CISOs) who want to attest agent work without memorizing CLI flags or pubkey strings.
 
 ---

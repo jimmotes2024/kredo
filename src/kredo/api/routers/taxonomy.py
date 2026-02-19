@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -94,6 +94,7 @@ class DeleteRequest(BaseModel):
 @router.post("/domains")
 async def create_domain(
     body: CreateDomainRequest,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Create a custom taxonomy domain. Requires Ed25519 signature from a registered agent."""
@@ -129,6 +130,14 @@ async def create_domain(
         store.create_custom_domain(body.id, body.label, body.pubkey)
         invalidate_cache()
         invalidate_trust_cache()
+        store.append_audit_event(
+            action="taxonomy.domain.create",
+            outcome="accepted",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"domain": body.id},
+        )
     except StoreError as e:
         return JSONResponse(status_code=409, content={"error": str(e)})
 
@@ -139,6 +148,7 @@ async def create_domain(
 async def create_skill(
     domain: str,
     body: CreateSkillRequest,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Add a custom skill to a domain. Requires Ed25519 signature from a registered agent."""
@@ -170,6 +180,14 @@ async def create_skill(
         store.create_custom_skill(domain, body.id, body.pubkey)
         invalidate_cache()
         invalidate_trust_cache()
+        store.append_audit_event(
+            action="taxonomy.skill.create",
+            outcome="accepted",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"domain": domain, "skill": body.id},
+        )
     except StoreError as e:
         return JSONResponse(status_code=409, content={"error": str(e)})
 
@@ -180,6 +198,7 @@ async def create_skill(
 async def delete_domain(
     domain: str,
     body: DeleteRequest,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Delete a custom domain (creator only). Cascades to skills."""
@@ -193,6 +212,14 @@ async def delete_domain(
         store.delete_custom_domain(domain, body.pubkey)
         invalidate_cache()
         invalidate_trust_cache()
+        store.append_audit_event(
+            action="taxonomy.domain.delete",
+            outcome="accepted",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"domain": domain},
+        )
     except StoreError as e:
         return JSONResponse(status_code=403, content={"error": str(e)})
 
@@ -204,6 +231,7 @@ async def delete_skill(
     domain: str,
     skill: str,
     body: DeleteRequest,
+    request: Request,
     store: KredoStore = Depends(get_store),
 ):
     """Delete a custom skill (creator only)."""
@@ -217,6 +245,14 @@ async def delete_skill(
         store.delete_custom_skill(domain, skill, body.pubkey)
         invalidate_cache()
         invalidate_trust_cache()
+        store.append_audit_event(
+            action="taxonomy.skill.delete",
+            outcome="accepted",
+            actor_pubkey=body.pubkey,
+            source_ip=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"domain": domain, "skill": skill},
+        )
     except StoreError as e:
         return JSONResponse(status_code=403, content={"error": str(e)})
 

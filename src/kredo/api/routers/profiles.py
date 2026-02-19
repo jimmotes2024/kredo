@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from kredo.accountability import resolve_accountability_context
 from kredo.api.deps import get_known_key, get_store
 from kredo.api.trust_cache import get_cached_agent_analysis
 from kredo.evidence import score_evidence
@@ -107,6 +108,7 @@ async def agent_profile(
 
     # Trust analysis: reputation score, ring flags, weighted skills
     analysis_payload = get_cached_agent_analysis(store, pubkey)
+    accountability = resolve_accountability_context(store, pubkey)
     ring_flags = [
         {
             "ring_type": ring.get("ring_type"),
@@ -125,6 +127,17 @@ async def agent_profile(
         key = f"{skill['domain']}:{skill['specific']}"
         skill["weighted_avg_proficiency"] = weighted_skill_map.get(key, skill["avg_proficiency"])
 
+    owner_details = None
+    if accountability.owner_pubkey:
+        owner_info = get_known_key(store, accountability.owner_pubkey)
+        owner_analysis = get_cached_agent_analysis(store, accountability.owner_pubkey)
+        owner_details = {
+            "pubkey": accountability.owner_pubkey,
+            "name": owner_info["name"] if owner_info else "",
+            "type": owner_info["type"] if owner_info else "human",
+            "reputation_score": owner_analysis.get("reputation_score", 0.0),
+        }
+
     return {
         "pubkey": pubkey,
         "name": agent["name"],
@@ -142,7 +155,17 @@ async def agent_profile(
         "trust_network": trust_network,
         "trust_analysis": {
             "reputation_score": analysis_payload.get("reputation_score", 0.0),
+            "deployability_score": round(
+                analysis_payload.get("reputation_score", 0.0) * accountability.multiplier,
+                4,
+            ),
             "ring_flags": ring_flags,
+        },
+        "accountability": {
+            "tier": accountability.tier,
+            "multiplier": accountability.multiplier,
+            "ownership_claim_id": accountability.ownership_claim_id,
+            "owner": owner_details,
         },
     }
 
