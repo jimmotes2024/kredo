@@ -7,6 +7,8 @@ Signature-only auth: Ed25519 signature IS the authentication.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
+from typing import Mapping
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +47,47 @@ async def lifespan(app: FastAPI):
     close_store()
 
 
+def _parse_csv_env(value: str | None, default: list[str]) -> list[str]:
+    if value is None:
+        return default
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    return parts or default
+
+
+def _env_truthy(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_cors_settings(environ: Mapping[str, str] | None = None) -> dict:
+    env = environ or os.environ
+    default_origins = [
+        "https://aikredo.com",
+        "https://app.aikredo.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+    return {
+        "allow_origins": _parse_csv_env(
+            env.get("KREDO_CORS_ALLOW_ORIGINS"),
+            default_origins,
+        ),
+        "allow_methods": _parse_csv_env(
+            env.get("KREDO_CORS_ALLOW_METHODS"),
+            ["GET", "POST", "DELETE", "OPTIONS"],
+        ),
+        "allow_headers": _parse_csv_env(
+            env.get("KREDO_CORS_ALLOW_HEADERS"),
+            ["Content-Type", "Authorization"],
+        ),
+        "allow_credentials": _env_truthy(
+            env.get("KREDO_CORS_ALLOW_CREDENTIALS"),
+            default=False,
+        ),
+    }
+
+
 app = FastAPI(
     title="Kredo Discovery API",
     description="Public attestation discovery and verification for the Kredo protocol.",
@@ -52,11 +95,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+cors_settings = _get_cors_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_settings["allow_origins"],
+    allow_methods=cors_settings["allow_methods"],
+    allow_headers=cors_settings["allow_headers"],
+    allow_credentials=cors_settings["allow_credentials"],
 )
 
 

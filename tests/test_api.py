@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from nacl.encoding import HexEncoder
 from nacl.signing import SigningKey
 
-from kredo.api.app import app
+from kredo.api.app import _get_cors_settings, app
 from kredo.api.deps import close_store, init_store
 from kredo.api.rate_limit import registration_limiter, submission_limiter
 from kredo.taxonomy import invalidate_cache as _invalidate_taxonomy_cache, set_store as _set_taxonomy_store
@@ -153,6 +153,36 @@ class TestHealth:
         assert data["version"]  # Just verify it's present
 
 
+class TestCorsSettings:
+    def test_cors_settings_defaults(self):
+        settings = _get_cors_settings({})
+        assert settings["allow_origins"] == [
+            "https://aikredo.com",
+            "https://app.aikredo.com",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
+        assert settings["allow_methods"] == ["GET", "POST", "DELETE", "OPTIONS"]
+        assert settings["allow_headers"] == ["Content-Type", "Authorization"]
+        assert settings["allow_credentials"] is False
+
+    def test_cors_settings_env_override(self):
+        settings = _get_cors_settings({
+            "KREDO_CORS_ALLOW_ORIGINS": "https://foo.test, http://localhost:9000",
+            "KREDO_CORS_ALLOW_METHODS": "GET,POST,PATCH",
+            "KREDO_CORS_ALLOW_HEADERS": "Content-Type,X-Api-Key",
+            "KREDO_CORS_ALLOW_CREDENTIALS": "true",
+        })
+        assert settings["allow_origins"] == ["https://foo.test", "http://localhost:9000"]
+        assert settings["allow_methods"] == ["GET", "POST", "PATCH"]
+        assert settings["allow_headers"] == ["Content-Type", "X-Api-Key"]
+        assert settings["allow_credentials"] is True
+
+    def test_cors_settings_wildcard_origin(self):
+        settings = _get_cors_settings({"KREDO_CORS_ALLOW_ORIGINS": "*"})
+        assert settings["allow_origins"] == ["*"]
+
+
 # ===== Registration =====
 
 class TestRegistration:
@@ -234,7 +264,7 @@ class TestTaxonomy:
 
     def test_invalid_domain(self, client):
         r = client.get("/taxonomy/nonexistent")
-        assert r.status_code == 200
+        assert r.status_code == 404
         assert "error" in r.json()
 
 

@@ -79,7 +79,10 @@ async def domain_skills(domain: str):
     """Return skills for a specific domain."""
     domains = get_domains()
     if domain not in domains:
-        return {"error": f"Unknown domain: {domain!r}", "valid_domains": domains}
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Unknown domain: {domain!r}", "valid_domains": domains},
+        )
     return {
         "domain": domain,
         "label": get_domain_label(domain),
