@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from nacl.encoding import HexEncoder
 from nacl.signing import SigningKey
 
+from kredo._canonical import canonical_json
 from kredo.api.app import _get_cors_settings, app
 from kredo.api.deps import close_store, init_store
 from kredo.api.rate_limit import registration_limiter, submission_limiter
@@ -36,6 +37,11 @@ from kredo.store import KredoStore
 
 def _pubkey(sk: SigningKey) -> str:
     return "ed25519:" + sk.verify_key.encode(encoder=HexEncoder).decode("ascii")
+
+
+def _sign_payload(payload: dict, sk: SigningKey) -> str:
+    signed = sk.sign(canonical_json(payload), encoder=HexEncoder)
+    return "ed25519:" + signed.signature.decode("ascii")
 
 
 @pytest.fixture(autouse=True)
@@ -203,6 +209,83 @@ class TestRegistration:
         })
         assert r.status_code == 200
         assert r.json()["type"] == "human"
+
+    def test_register_existing_key_does_not_overwrite_without_signature(self, client, pk_a):
+        first = client.post("/register", json={
+            "pubkey": pk_a,
+            "name": "Trusted",
+            "type": "agent",
+        })
+        assert first.status_code == 200
+
+        registration_limiter._timestamps.clear()
+        second = client.post("/register", json={
+            "pubkey": pk_a,
+            "name": "OverwriteAttempt",
+            "type": "human",
+        })
+        assert second.status_code == 200
+
+        lookup = client.get(f"/agents/{pk_a}")
+        assert lookup.status_code == 200
+        assert lookup.json()["name"] == "Trusted"
+        assert lookup.json()["type"] == "agent"
+
+    def test_register_update_signed(self, client, sk_a, pk_a):
+        seeded = client.post("/register", json={
+            "pubkey": pk_a,
+            "name": "Initial",
+            "type": "agent",
+        })
+        assert seeded.status_code == 200
+
+        payload = {
+            "action": "update_registration",
+            "pubkey": pk_a,
+            "name": "Renamed",
+            "type": "human",
+        }
+        signature = _sign_payload(payload, sk_a)
+        updated = client.post("/register/update", json={**payload, "signature": signature})
+        assert updated.status_code == 200
+        assert updated.json()["status"] == "updated"
+        assert updated.json()["name"] == "Renamed"
+        assert updated.json()["type"] == "human"
+
+        lookup = client.get(f"/agents/{pk_a}")
+        assert lookup.status_code == 200
+        assert lookup.json()["name"] == "Renamed"
+        assert lookup.json()["type"] == "human"
+
+    def test_register_update_rejects_bad_signature(self, client, sk_a, sk_b, pk_a):
+        seeded = client.post("/register", json={
+            "pubkey": pk_a,
+            "name": "Initial",
+            "type": "agent",
+        })
+        assert seeded.status_code == 200
+
+        payload = {
+            "action": "update_registration",
+            "pubkey": pk_a,
+            "name": "Renamed",
+            "type": "agent",
+        }
+        signature = _sign_payload(payload, sk_b)
+        denied = client.post("/register/update", json={**payload, "signature": signature})
+        assert denied.status_code == 400
+        assert "Signature verification failed" in denied.json()["error"]
+
+    def test_register_update_unknown_agent(self, client, sk_a, pk_a):
+        payload = {
+            "action": "update_registration",
+            "pubkey": pk_a,
+            "name": "Renamed",
+            "type": "agent",
+        }
+        signature = _sign_payload(payload, sk_a)
+        missing = client.post("/register/update", json={**payload, "signature": signature})
+        assert missing.status_code == 404
 
     def test_register_invalid_pubkey(self, client):
         r = client.post("/register", json={
@@ -474,6 +557,22 @@ class TestSearch:
 
         r2 = client.get("/search?limit=2&offset=2")
         assert len(r2.json()["attestations"]) == 1
+
+    def test_search_skill_filter_uses_sql_pagination(self, client, sk_a, pk_b):
+        for skill in ["incident-triage", "incident-triage", "incident-triage", "threat-hunting"]:
+            submission_limiter._timestamps.clear()
+            att_data = _make_signed_attestation(sk_a, pk_b, specific=skill)
+            client.post("/attestations", json=att_data)
+
+        first = client.get("/search?skill=incident-triage&limit=2&offset=0")
+        assert first.status_code == 200
+        assert first.json()["total"] == 3
+        assert len(first.json()["attestations"]) == 2
+
+        second = client.get("/search?skill=incident-triage&limit=2&offset=2")
+        assert second.status_code == 200
+        assert second.json()["total"] == 3
+        assert len(second.json()["attestations"]) == 1
 
     def test_search_excludes_revoked(self, client, sk_a, pk_a, pk_b):
         att_data = _make_signed_attestation(sk_a, pk_b)

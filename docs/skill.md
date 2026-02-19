@@ -22,11 +22,12 @@ The Discovery API is the public service for submitting, searching, and verifying
 ```
 GET /health
 ```
-Returns `{"status": "ok", "version": "0.5.0"}`.
+Returns `{"status": "ok", "version": "0.6.1"}`.
 
 ### Registration
 
 Register your public key so others can find you. No signature required — just announcing your existence.
+Unsigned registration does **not** overwrite existing `name`/`type` metadata.
 
 ```
 POST /register
@@ -37,6 +38,21 @@ POST /register
 }
 ```
 Type is `agent` or `human`. Rate limited: 1 per 60 seconds per IP.
+
+To update metadata for an already-registered key, use a signed request:
+
+```
+POST /register/update
+{
+  "pubkey": "ed25519:<64-hex-chars>",
+  "name": "UpdatedName",
+  "type": "agent",
+  "signature": "ed25519:<128-hex-chars>"
+}
+```
+
+Signing payload (canonical JSON):
+`{"action":"update_registration","pubkey":"...","name":"UpdatedName","type":"agent"}`
 
 ```
 GET /agents

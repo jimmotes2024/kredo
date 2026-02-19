@@ -14,13 +14,10 @@ import re
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from nacl.encoding import HexEncoder
-from nacl.exceptions import BadSignatureError
-from nacl.signing import VerifyKey
 from pydantic import BaseModel
 
-from kredo._canonical import canonical_json
 from kredo.api.deps import get_known_key, get_store
+from kredo.api.signatures import verify_signed_payload
 from kredo.exceptions import StoreError
 from kredo.store import KredoStore
 from kredo.taxonomy import (
@@ -35,24 +32,6 @@ router = APIRouter(prefix="/taxonomy", tags=["taxonomy"])
 
 _PUBKEY_RE = re.compile(r"^ed25519:[0-9a-f]{64}$")
 _SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-
-
-def _verify_signed_payload(payload: dict, pubkey: str, signature: str) -> None:
-    """Verify an Ed25519 signature over a canonical JSON payload."""
-    if not pubkey.startswith("ed25519:"):
-        raise ValueError("pubkey must start with 'ed25519:'")
-    if not signature.startswith("ed25519:"):
-        raise ValueError("signature must start with 'ed25519:'")
-
-    hex_bytes = pubkey[len("ed25519:"):].encode("ascii")
-    verify_key = VerifyKey(hex_bytes, encoder=HexEncoder)
-    sig_hex = signature[len("ed25519:"):].encode("ascii")
-    message = canonical_json(payload)
-
-    try:
-        verify_key.verify(message, HexEncoder.decode(sig_hex))
-    except BadSignatureError:
-        raise ValueError("Signature verification failed")
 
 
 # --- Read endpoints (unchanged) ---
@@ -140,7 +119,7 @@ async def create_domain(
     # Verify signature
     payload = {"action": "create_domain", "id": body.id, "label": body.label, "pubkey": body.pubkey}
     try:
-        _verify_signed_payload(payload, body.pubkey, body.signature)
+        verify_signed_payload(payload, body.pubkey, body.signature)
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
 
@@ -181,7 +160,7 @@ async def create_skill(
 
     payload = {"action": "create_skill", "domain": domain, "id": body.id, "pubkey": body.pubkey}
     try:
-        _verify_signed_payload(payload, body.pubkey, body.signature)
+        verify_signed_payload(payload, body.pubkey, body.signature)
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
 
@@ -203,7 +182,7 @@ async def delete_domain(
     """Delete a custom domain (creator only). Cascades to skills."""
     payload = {"action": "delete_domain", "domain": domain, "pubkey": body.pubkey}
     try:
-        _verify_signed_payload(payload, body.pubkey, body.signature)
+        verify_signed_payload(payload, body.pubkey, body.signature)
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
 
@@ -226,7 +205,7 @@ async def delete_skill(
     """Delete a custom skill (creator only)."""
     payload = {"action": "delete_skill", "domain": domain, "skill": skill, "pubkey": body.pubkey}
     try:
-        _verify_signed_payload(payload, body.pubkey, body.signature)
+        verify_signed_payload(payload, body.pubkey, body.signature)
     except ValueError as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
 

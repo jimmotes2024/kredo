@@ -81,7 +81,8 @@ All read endpoints are open. Write endpoints use Ed25519 signature verification 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Service status |
-| `/register` | POST | Register a public key |
+| `/register` | POST | Register a public key (unsigned; does not overwrite existing name/type) |
+| `/register/update` | POST | Signed metadata update for an existing registration |
 | `/agents` | GET | List registered agents |
 | `/agents/{pubkey}` | GET | Agent details |
 | `/agents/{pubkey}/profile` | GET | Full reputation profile |

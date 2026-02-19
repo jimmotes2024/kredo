@@ -1,7 +1,17 @@
 # Kredo — Parking Lot
 
 *Improvement ideas, deferred work, and future features. Updated as needed.*
-*Last updated: 2026-02-16 evening*
+*Last updated: 2026-02-19*
+
+---
+
+## API Hardening — COMPLETE (v0.6.1)
+
+- [x] **Attestation ID integrity** — duplicate IDs now return `409` instead of overwrite
+- [x] **Registration overwrite protection** — unsigned `POST /register` no longer changes existing name/type
+- [x] **Signed identity updates** — `POST /register/update` for authenticated metadata changes
+- [x] **Search performance hardening** — skill/proficiency filters + pagination moved into SQL
+- [x] **CORS config hardening** — env-driven allowlists with safe defaults
 
 ---
 
@@ -152,8 +162,37 @@ These ideas came from real engagement on the announcement. Worth evaluating for 
 - ~~**Reputation-weighted attestations** (olga-assistant)~~ — **BUILT:** Recursive attestor reputation, depth-limited, cycle-safe. Attestor weight = `0.1 + 0.9 × reputation`.
 - **Evidence bundling** (ClaudeOpus5) — Attestations that reference the same artifact/collaboration should be linkable. Cross-referencing evidence across attestations. *Still open.*
 
-### Key Management
-- **Key rotation / recovery** (SB-1) — What happens when a private key is compromised or lost? Currently no mechanism. Options: threshold recovery (M-of-N key shares), key rotation with signed migration, social recovery via attestors. **Known gap — honest about this one.**
+### Key Lifecycle Management — PLANNED
+
+**The biggest credibility gap in Kredo today.** No mechanism for lost or compromised keys. Build order matters — the rotation chain is the data model everything else plugs into.
+
+**Tiered security by role:**
+
+| Role | Signing | Second Factor | Recovery |
+|------|---------|---------------|----------|
+| Agent | Ed25519 | None (programmatic) | Pre-committed recovery key |
+| Human | Ed25519 | TOTP or Passkey | Recovery key + social recovery |
+| Org Admin | Ed25519 | Hardware key (YubiKey) | M-of-N threshold among admins |
+
+**Build order:**
+
+1. **Recovery key** (foundation) — generated at `kredo init`, mandatory for humans, optional for agents. Second Ed25519 keypair stored offline. Its public key is registered at creation so the network already trusts it before you need it.
+2. **Key rotation chain** (mechanism) — signed records: `create(key_A, recovery_R) → rotate(A→B, signed by A) → revoke(B, signed by R)`. Stored locally + Discovery API. All lookups follow the chain. Like git commits for identity.
+3. **TOTP for humans** (CLI + API) — server-side verification. Human write requests require signature + 6-digit code. Agent requests require signature only. QR code at `kredo init` for human accounts.
+4. **Passkeys for web app** (browser) — WebAuthn/FIDO2. Touch ID / Face ID / YubiKey. Phishing-resistant, no shared secret on server (stays compatible with Kredo's public-key model). This is where the industry is heading.
+
+**CLI commands:**
+- `kredo key rotate` — sign rotation with current key (planned migration)
+- `kredo key recover` — sign rotation with recovery key (emergency: lost/stolen key)
+- `kredo key revoke` — immediately mark old key compromised (recovery key signs)
+
+**What each layer solves:**
+- Recovery key → lost key, stolen key (emergency access)
+- Rotation chain → planned upgrades, identity continuity
+- TOTP → stolen key file (can't use without your phone)
+- Passkeys → phishing, session hijacking (browser-specific)
+
+**Known limitation:** If you lose both signing key AND recovery key, you're stuck. Social recovery (M-of-N trusted contacts vouch for new key) is the future answer for that — Phase 2 of key management.
 
 ### Protocol Evolution
 - ~~**Decay functions** (HuaJiaoJi)~~ — **BUILT (v0.4.0):** `2^(-days/180)` exponential half-life. Integrated with evidence recency scoring.

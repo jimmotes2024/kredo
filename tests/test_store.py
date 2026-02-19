@@ -62,13 +62,20 @@ class TestIdentityStorage:
 
 
 class TestAttestationStorage:
-    def _make_attestation_json(self, attestor_n=1, subject_n=2):
+    def _make_attestation_json(
+        self,
+        attestor_n=1,
+        subject_n=2,
+        domain="reasoning",
+        specific="planning",
+        proficiency=Proficiency.PROFICIENT,
+    ):
         now = datetime.now(timezone.utc)
         att = Attestation(
             type=AttestationType.SKILL,
             subject=Subject(pubkey=_make_pubkey(subject_n), name="Subject"),
             attestor=Attestor(pubkey=_make_pubkey(attestor_n), name="Attestor", type=AttestorType.AGENT),
-            skill=Skill(domain="reasoning", specific="planning", proficiency=Proficiency.PROFICIENT),
+            skill=Skill(domain=domain, specific=specific, proficiency=proficiency),
             evidence=Evidence(context="Worked together on planning task"),
             issued=now,
             expires=now + timedelta(days=365),
@@ -103,6 +110,63 @@ class TestAttestationStorage:
         store.save_attestation(json_str)
         with pytest.raises(DuplicateAttestationError):
             store.save_attestation(json_str)
+
+    def test_search_by_skill_and_min_proficiency(self, store):
+        low_json, _ = self._make_attestation_json(
+            domain="security-operations",
+            specific="incident-triage",
+            proficiency=Proficiency.NOVICE,
+        )
+        mid_json, _ = self._make_attestation_json(
+            domain="security-operations",
+            specific="incident-triage",
+            proficiency=Proficiency.COMPETENT,
+        )
+        high_json, _ = self._make_attestation_json(
+            domain="security-operations",
+            specific="threat-hunting",
+            proficiency=Proficiency.EXPERT,
+        )
+        store.save_attestation(low_json)
+        store.save_attestation(mid_json)
+        store.save_attestation(high_json)
+
+        triage_only = store.search_attestations(skill="incident-triage")
+        assert len(triage_only) == 2
+
+        high_proficiency = store.search_attestations(min_proficiency=4)
+        assert len(high_proficiency) == 1
+        assert high_proficiency[0]["skill"]["specific"] == "threat-hunting"
+
+    def test_search_with_limit_offset_and_filtered_count(self, store):
+        for prof in (
+            Proficiency.NOVICE,
+            Proficiency.COMPETENT,
+            Proficiency.PROFICIENT,
+            Proficiency.EXPERT,
+        ):
+            json_str, _ = self._make_attestation_json(
+                domain="security-operations",
+                specific="incident-triage",
+                proficiency=prof,
+            )
+            store.save_attestation(json_str)
+
+        first_page = store.search_attestations(
+            skill="incident-triage",
+            limit=2,
+            offset=0,
+        )
+        second_page = store.search_attestations(
+            skill="incident-triage",
+            limit=2,
+            offset=2,
+        )
+        assert len(first_page) == 2
+        assert len(second_page) == 2
+
+        total = store.count_attestations_filtered(skill="incident-triage")
+        assert total == 4
 
 
 class TestTrustGraph:
@@ -261,6 +325,32 @@ class TestContacts:
         assert len(contacts) == 2
         names = {c["name"] for c in contacts}
         assert names == {"Alice", "Bob"}
+
+    def test_register_known_key_conflict_does_not_overwrite_metadata(self, store):
+        pk = _make_pubkey(1)
+        store.register_known_key(pk, name="Alice", attestor_type="human")
+        store.register_known_key(pk, name="Mallory", attestor_type="agent")
+
+        result = store.find_key_by_name("Alice")
+        assert result is not None
+        assert result["pubkey"] == pk
+        assert result["type"] == "human"
+
+        assert store.find_key_by_name("Mallory") is None
+
+    def test_update_known_key_identity(self, store):
+        pk = _make_pubkey(1)
+        store.register_known_key(pk, name="Alice", attestor_type="agent")
+        store.update_known_key_identity(pk, "Alice Smith", "human")
+
+        row = store.find_key_by_name("Alice Smith")
+        assert row is not None
+        assert row["pubkey"] == pk
+        assert row["type"] == "human"
+
+    def test_update_known_key_identity_missing_raises(self, store):
+        with pytest.raises(KeyNotFoundError):
+            store.update_known_key_identity(_make_pubkey(999), "Nobody", "agent")
 
     def test_list_contacts_empty(self, store):
         assert store.list_contacts() == []

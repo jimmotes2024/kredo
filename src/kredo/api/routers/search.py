@@ -35,27 +35,25 @@ async def search_attestations(
         subject_pubkey=subject,
         attestor_pubkey=attestor,
         domain=domain,
+        skill=skill,
         att_type=type,
+        min_proficiency=min_proficiency,
+        include_revoked=include_revoked,
+        limit=limit,
+        offset=offset,
+    )
+    total = store.count_attestations_filtered(
+        subject_pubkey=subject,
+        attestor_pubkey=attestor,
+        domain=domain,
+        skill=skill,
+        att_type=type,
+        min_proficiency=min_proficiency,
         include_revoked=include_revoked,
     )
 
-    # Post-query filtering for fields not in store API
-    if skill:
-        results = [
-            r for r in results
-            if r.get("skill", {}) and r["skill"].get("specific") == skill
-        ]
-    if min_proficiency is not None:
-        results = [
-            r for r in results
-            if r.get("skill", {}) and r["skill"].get("proficiency", 0) >= min_proficiency
-        ]
-
-    total = len(results)
-    page = results[offset : offset + limit]
-
     return {
-        "attestations": page,
+        "attestations": results,
         "total": total,
         "limit": limit,
         "offset": offset,

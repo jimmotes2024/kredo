@@ -215,18 +215,39 @@ class KredoStore:
     # --- Known Keys ---
 
     def register_known_key(self, pubkey: str, name: str = "", attestor_type: str = "agent") -> None:
-        """Register a known external key (no private key)."""
+        """Register a known external key (no private key).
+
+        On conflict, only refreshes ``last_seen``. Unsigned registration must not
+        overwrite identity metadata.
+        """
         now = _now_iso()
         try:
             self._conn.execute(
                 """INSERT INTO known_keys (pubkey, name, type, first_seen, last_seen)
                    VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(pubkey) DO UPDATE SET last_seen = ?, name = CASE WHEN ? != '' THEN ? ELSE name END""",
-                (pubkey, name, attestor_type, now, now, now, name, name),
+                   ON CONFLICT(pubkey) DO UPDATE SET last_seen = excluded.last_seen""",
+                (pubkey, name, attestor_type, now, now),
             )
             self._conn.commit()
         except sqlite3.Error as e:
             raise StoreError(f"Failed to register key: {e}") from e
+
+    def update_known_key_identity(self, pubkey: str, name: str, attestor_type: str) -> None:
+        """Update known-key metadata after signature verification."""
+        try:
+            cursor = self._conn.execute(
+                """UPDATE known_keys
+                   SET name = ?, type = ?, last_seen = ?
+                   WHERE pubkey = ?""",
+                (name, attestor_type, _now_iso(), pubkey),
+            )
+            if cursor.rowcount == 0:
+                raise KeyNotFoundError(f"Known key not found: {pubkey}")
+            self._conn.commit()
+        except KeyNotFoundError:
+            raise
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to update key: {e}") from e
 
     def find_key_by_name(self, name: str) -> Optional[dict]:
         """Find a known key or identity by name (case-insensitive)."""
@@ -333,8 +354,12 @@ class KredoStore:
         subject_pubkey: Optional[str] = None,
         attestor_pubkey: Optional[str] = None,
         domain: Optional[str] = None,
+        skill: Optional[str] = None,
         att_type: Optional[str] = None,
+        min_proficiency: Optional[int] = None,
         include_revoked: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
     ) -> list[dict]:
         """Search attestations by criteria. Returns parsed JSON dicts."""
         conditions = []
@@ -348,18 +373,67 @@ class KredoStore:
         if domain:
             conditions.append("domain = ?")
             params.append(domain)
+        if skill:
+            conditions.append("specific_skill = ?")
+            params.append(skill)
         if att_type:
             conditions.append("type = ?")
             params.append(att_type)
+        if min_proficiency is not None:
+            conditions.append("COALESCE(proficiency, 0) >= ?")
+            params.append(min_proficiency)
         if not include_revoked:
             conditions.append("is_revoked = 0")
 
         where = " AND ".join(conditions) if conditions else "1=1"
-        rows = self._conn.execute(
-            f"SELECT raw_json FROM attestations WHERE {where} ORDER BY issued DESC",
-            params,
-        ).fetchall()
+        query = f"SELECT raw_json FROM attestations WHERE {where} ORDER BY issued DESC"
+        query_params = list(params)
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            query_params.extend([limit, offset])
+        rows = self._conn.execute(query, query_params).fetchall()
         return [json.loads(r["raw_json"]) for r in rows]
+
+    def count_attestations_filtered(
+        self,
+        subject_pubkey: Optional[str] = None,
+        attestor_pubkey: Optional[str] = None,
+        domain: Optional[str] = None,
+        skill: Optional[str] = None,
+        att_type: Optional[str] = None,
+        min_proficiency: Optional[int] = None,
+        include_revoked: bool = False,
+    ) -> int:
+        """Count attestations matching filters."""
+        conditions = []
+        params = []
+        if subject_pubkey:
+            conditions.append("subject_pubkey = ?")
+            params.append(subject_pubkey)
+        if attestor_pubkey:
+            conditions.append("attestor_pubkey = ?")
+            params.append(attestor_pubkey)
+        if domain:
+            conditions.append("domain = ?")
+            params.append(domain)
+        if skill:
+            conditions.append("specific_skill = ?")
+            params.append(skill)
+        if att_type:
+            conditions.append("type = ?")
+            params.append(att_type)
+        if min_proficiency is not None:
+            conditions.append("COALESCE(proficiency, 0) >= ?")
+            params.append(min_proficiency)
+        if not include_revoked:
+            conditions.append("is_revoked = 0")
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM attestations WHERE {where}",
+            params,
+        ).fetchone()
+        return int(row["cnt"]) if row else 0
 
     # --- Trust Graph ---
 
