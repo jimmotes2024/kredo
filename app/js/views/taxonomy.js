@@ -30,24 +30,24 @@ const TaxonomyView = (() => {
         <h3>Add Custom Domain or Skill</h3>
         <p class="page-subtitle" style="margin-bottom:1rem">Extend the taxonomy with your own domains and skills. Requires your identity signature.</p>
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
-          <div style="flex:1;min-width:200px">
-            <label class="form-label">Domain ID</label>
-            <input type="text" id="custom-domain-id" class="form-input" placeholder="e.g. vise-operations">
+          <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label for="custom-domain-id">Domain ID</label>
+            <input type="text" id="custom-domain-id" placeholder="e.g. vise-operations">
           </div>
-          <div style="flex:1;min-width:200px">
-            <label class="form-label">Domain Label</label>
-            <input type="text" id="custom-domain-label" class="form-input" placeholder="e.g. VISE Operations">
+          <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label for="custom-domain-label">Domain Label</label>
+            <input type="text" id="custom-domain-label" placeholder="e.g. VISE Operations">
           </div>
           <button class="btn btn-primary" onclick="TaxonomyView.addDomain()" id="btn-add-domain">Add Domain</button>
         </div>
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
-          <div style="flex:1;min-width:200px">
-            <label class="form-label">Target Domain</label>
-            <select id="custom-skill-domain" class="form-input"><option value="">Loading...</option></select>
+          <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label for="custom-skill-domain">Target Domain</label>
+            <select id="custom-skill-domain"><option value="">Loading...</option></select>
           </div>
-          <div style="flex:1;min-width:200px">
-            <label class="form-label">Skill ID</label>
-            <input type="text" id="custom-skill-id" class="form-input" placeholder="e.g. chain-orchestration">
+          <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label for="custom-skill-id">Skill ID</label>
+            <input type="text" id="custom-skill-id" placeholder="e.g. chain-orchestration">
           </div>
           <button class="btn btn-primary" onclick="TaxonomyView.addSkill()" id="btn-add-skill">Add Skill</button>
         </div>

@@ -66,12 +66,13 @@ Neither of us could have designed this alone. The protocol is better because it 
 
 ## What's live today
 
-Kredo v0.8.0 is live. Everything described on this site is working and available right now:
+Kredo v0.8.2 is live. Everything described on this site is working and available right now:
 
 - **The protocol library** — `pip install kredo`. Ed25519 signing, evidence scoring, skill taxonomy, IPFS support, accountability links, anti-gaming source signals.
 - **The Discovery API** — `api.aikredo.com`. Search, verify, submit, trust analysis, ownership/accountability, integrity status checks, source-risk signals, and ring detection.
 - **The LangChain SDK** — `pip install langchain-kredo`. Trust gates, callback handlers, one-liner attestation, 4 LangChain tools.
 - **The human-friendly CLI** — `kredo init`, guided attestation, contacts, quickstart tutorial, human-readable export.
+- **The web app** — `https://aikredo.com/app/`. Browser-based attestation GUI and network browser.
 - **Anti-gaming defenses** — ring detection, reputation weighting, attestation decay, and source concentration risk signals.
 
 The protocol is open. The tools are free. The network is growing.

@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "sync:app": "node scripts/sync-app.mjs",
+    "build": "npm run sync:app && astro build",
     "preview": "astro preview",
-    "deploy": "astro build && scp -r dist/* root@198.58.117.117:/opt/kredo/site/"
+    "deploy": "npm run build && scp -r dist/* root@198.58.117.117:/opt/kredo/site/"
   },
   "dependencies": {
     "astro": "^5.0.0"

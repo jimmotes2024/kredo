@@ -8,8 +8,9 @@ const KredoApp = (() => {
   const routes = {
     '':          { view: 'setup',    label: 'Setup',     module: () => SetupView },
     'setup':     { view: 'setup',    label: 'Setup',     module: () => SetupView },
-    'dashboard': { view: 'dashboard',label: 'Dashboard', module: () => DashboardView },
-    'attest':    { view: 'attest',   label: 'Attest',    module: () => AttestView },
+    'dashboard': { view: 'dashboard',label: 'Dashboard', module: () => DashboardView, requiresIdentity: true },
+    'governance':{ view: 'governance',label: 'Governance', module: () => GovernanceView, requiresIdentity: true },
+    'attest':    { view: 'attest',   label: 'Attest',    module: () => AttestView, requiresIdentity: true },
     'browse':    { view: 'browse',   label: 'Browse',    module: () => BrowseView },
     'verify':    { view: 'verify',   label: 'Verify',    module: () => VerifyView },
     'taxonomy':  { view: 'taxonomy', label: 'Taxonomy',  module: () => TaxonomyView },
@@ -36,6 +37,18 @@ const KredoApp = (() => {
     const hash = getHash();
     const baseRoute = hash.split('/')[0];
     const routeInfo = routes[baseRoute] || routes[hash] || routes[''];
+
+    // Guard: redirect to setup if view requires identity and none exists
+    if (routeInfo.requiresIdentity && !KredoStorage.hasIdentity()) {
+      navigate('setup');
+      return;
+    }
+
+    // Guard: redirect to dashboard if user has identity and lands on setup
+    if (routeInfo.view === 'setup' && KredoStorage.hasIdentity()) {
+      navigate('dashboard');
+      return;
+    }
 
     // Update nav active state
     document.querySelectorAll('nav a').forEach(a => {
@@ -80,20 +93,6 @@ const KredoApp = (() => {
 
   function init() {
     window.addEventListener('hashchange', route);
-
-    // If user has identity and lands on setup, redirect to dashboard
-    const hash = getHash();
-    if ((!hash || hash === 'setup') && KredoStorage.hasIdentity()) {
-      navigate('dashboard');
-      return;
-    }
-
-    // If user has no identity and lands on non-setup page, redirect to setup
-    if (hash && hash !== 'setup' && !KredoStorage.hasIdentity()) {
-      navigate('setup');
-      return;
-    }
-
     updateIdentityStatus();
     checkAPIHealth();
     route();

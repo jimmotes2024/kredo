@@ -30,6 +30,32 @@ kredo lookup
 kredo search --domain security-operations
 ```
 
+## Web App (No Install)
+
+Kredo now includes a static browser GUI in `app/` for operators who prefer forms over CLI flags.
+
+```bash
+cd app
+python3 -m http.server 8080
+# open http://127.0.0.1:8080
+```
+
+Main tabs:
+- `Setup` — local keypair generation/import and registration
+- `Dashboard` — reputation, accountability tier, integrity run-gate summary
+- `Governance` — signed registration updates, ownership claim/confirm/revoke, integrity baseline/check/status, source anomaly review
+- `Attest` / `Browse` / `Verify` / `Taxonomy` — guided attestation and discovery workflows
+
+Security model:
+- Private keys remain in local browser storage (optional local passphrase encryption)
+- Every write action in Governance signs the exact API payload client-side
+- The API verifies signatures server-side before accepting updates
+
+Public hosting:
+- Astro build syncs `app/` into `site/public/app`
+- Production URL: `https://aikredo.com/app/`
+- Legacy host `https://app.aikredo.com` is now a canonical 301 redirect to `https://aikredo.com/app/`
+
 ## Attest a Skill
 
 ```bash

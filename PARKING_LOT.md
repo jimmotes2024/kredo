@@ -15,6 +15,41 @@
 
 ---
 
+## Web Governance GUI — COMPLETE (v0.8.1, 2026-02-20)
+
+- [x] **New Governance tab in browser app** — single-screen UX for signed registration, ownership, integrity, and risk-signal workflows
+- [x] **Ownership workflow simplification** — create/confirm/revoke claim forms with payload-safe signing flow and claim helpers
+- [x] **Integrity workflow simplification** — owner baseline set, agent runtime check, and status read in one place (manifest parser included)
+- [x] **Source anomaly review panel** — query and inspect `/risk/source-anomalies` clusters from UI
+- [x] **Dashboard visibility upgrades** — accountability tier and integrity traffic-light surfaced directly on profile dashboard
+- [x] **API client hardening** — resilient non-JSON/network error handling for better operator feedback
+
+---
+
+## Astro Hosting Integration — COMPLETE (v0.8.2, 2026-02-20)
+
+- [x] **Public app hosting path** — web app now served via Astro static output at `/app/`
+- [x] **Build pipeline sync** — `site` build now runs `sync:app` to mirror `../app` into `site/public/app`
+- [x] **Site navigation updates** — top-level CTA and developer docs now point to `/app/`
+- [x] **Site runbook update** — `site/README.md` documents sync/build/deploy flow for app hosting
+
+---
+
+## App Navigation Polish — COMPLETE (v0.8.3, 2026-02-20)
+
+- [x] **Persistent return path** — added global `Back to Main Site` CTA in app header across all app views
+- [x] **Live deployment update** — app navigation fix included in Astro-hosted `/app/` build pipeline
+
+---
+
+## Canonical App Host Redirect — COMPLETE (v0.8.4, 2026-02-20)
+
+- [x] **Single canonical app URL** — `https://aikredo.com/app/` is now the primary app endpoint
+- [x] **Legacy host redirected** — `https://app.aikredo.com` now returns 301 to `https://aikredo.com/app/`
+- [x] **Nginx runbook alignment** — `deploy/nginx.conf` updated to document and apply the redirect behavior
+
+---
+
 ## API Hardening — COMPLETE (v0.6.1)
 
 - [x] **Attestation ID integrity** — duplicate IDs now return `409` instead of overwrite

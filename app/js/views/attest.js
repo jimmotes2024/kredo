@@ -42,6 +42,13 @@ const AttestView = (() => {
 
     resetState();
 
+    // Check for pre-selected subject from Browse view
+    const preSelected = localStorage.getItem('attest_subject');
+    if (preSelected) {
+      localStorage.removeItem('attest_subject');
+      state.subject = preSelected;
+    }
+
     // Preload taxonomy and agents
     try {
       [taxonomy, agents] = await Promise.all([
@@ -50,6 +57,12 @@ const AttestView = (() => {
       ]);
     } catch (err) {
       taxonomy = null;
+    }
+
+    // If we have a pre-selected subject, resolve their name
+    if (state.subject && agents.length > 0) {
+      const match = agents.find(a => a.pubkey === state.subject);
+      if (match) state.subjectName = match.name || '';
     }
 
     renderStep();
