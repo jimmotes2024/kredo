@@ -2,7 +2,7 @@
 
 **Authors:** Jim Motes & Vanguard
 **Domains:** aikredo.com (primary), trustwrit.com (redirect)
-**Status:** Active (implemented through v0.7.0; this document is now architecture/reference scope)
+**Status:** Active (implemented through v0.8.0; this document is now architecture/reference scope)
 
 ---
 

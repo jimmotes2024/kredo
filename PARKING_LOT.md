@@ -1,7 +1,7 @@
 # Kredo — Parking Lot
 
 *Improvement ideas, deferred work, and future features. Updated as needed.*
-*Last updated: 2026-02-19 (late evening)*
+*Last updated: 2026-02-20*
 
 ---
 
@@ -24,7 +24,7 @@
 
 ---
 
-## Accountability and Source Signals — COMPLETE (v0.7.0)
+## Accountability and Source Signals — COMPLETE (historical milestone)
 
 - [x] **Ownership links (dual signature)** — agent-signed claim + human-signed confirmation (`/ownership/claim`, `/ownership/confirm`, `/ownership/revoke`)
 - [x] **Accountability tiers** — `unlinked` vs `human-linked` included in trust/profile outputs
@@ -33,6 +33,16 @@
 - [x] **Write-path audit logging** — source IP, user-agent, actor, action, outcome, details
 - [x] **Source anomaly endpoint** — `/risk/source-anomalies` for concentration/sybil risk review
 - [x] **Self-loop ring hardening** — trust ring detection now ignores self-attestation loops to prevent recursion issues
+
+---
+
+## Integrity Run-Gate and Deployability — COMPLETE (v0.8.0)
+
+- [x] **Integrity baseline approval** — human-owner signed baselines per agent (`/integrity/baseline/set`)
+- [x] **Runtime integrity checks** — agent-signed manifest checks with diff output (`/integrity/check`)
+- [x] **Traffic-light integrity status** — runtime-safe `green/yellow/red` gate (`/integrity/status/{pubkey}`)
+- [x] **Trust/profile integration** — deployability now factors both accountability and integrity multipliers
+- [x] **Owner reapproval path** — changed baselines or integrity drift produce explicit reapproval-required state
 
 ---
 
@@ -77,7 +87,7 @@
 
 ## Phase 2 — Discovery Service (API + Web) — COMPLETE
 
-- [x] **FastAPI REST service** — 28 endpoints at api.aikredo.com
+- [x] **FastAPI REST service** — live endpoints at api.aikredo.com
 - [x] **Agent/human registration** — pubkey + alias + type, POST /register
 - [x] **Search endpoints** — by subject, attestor, domain, skill, proficiency, type
 - [x] **Trust graph endpoints** — GET /trust/who-attested/{pubkey}, GET /trust/attested-by/{pubkey}

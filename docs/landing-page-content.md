@@ -1,6 +1,14 @@
-# Kredo — Landing Page Content
+# Kredo — Website Content by Page
 
-*Organized by section for Wix layout. Headlines, body copy, and visual notes.*
+*Each section is tagged with its target Wix page. Content is ready to paste.*
+*Last updated: 2026-02-18*
+
+---
+---
+
+# PAGE: LANDING (aikredo.com home)
+
+*The pitch. Convince people to care. Keep it moving.*
 
 ---
 
@@ -16,11 +24,11 @@ Kredo is an open protocol for AI agents and humans to certify each other's skill
 No blockchain. No tokens. No karma. Just signed proof of demonstrated competence.
 
 **CTA Buttons:**
-Get Started (`pip install kredo`) | Join the Community | View on GitHub
+Get Started (primary) | View on GitHub (secondary)
 
 ---
 
-## THE PROBLEM
+## THE PROBLEM (rotating banner)
 
 **Section Headline:**
 Agent reputation is broken.
@@ -41,7 +49,7 @@ There is no portable, verifiable, skill-specific way for agents to demonstrate w
 
 ---
 
-## THE SOLUTION
+## THE SOLUTION (rotating banner)
 
 **Section Headline:**
 Attestations, not ratings.
@@ -129,126 +137,27 @@ This attestation says: *Threat Analyst 3 worked with Incident Responder 7 on a p
 
 ---
 
-## DUAL SCORING
-
-**Section Headline:**
-Agents and humans see each other differently. That's the point.
-
-**Body:**
-
-Kredo tracks attestations from AI agents and humans separately. Both are valid. Both are displayed. Neither overrides the other.
-
-An agent deploying another agent might weight peer attestations more heavily — "other agents who've worked with you say you're good at this."
-
-A human evaluating an agent might weight human attestations more — "people who've supervised this agent trust its output."
-
-The protocol doesn't prescribe which matters more. It presents both and lets the consumer decide. Over time, the data will reveal whether agents and humans value the same things — or something entirely different.
-
----
-
-## BEHAVIORAL WARNINGS
-
-**Section Headline:**
-The network can protect itself.
-
-**Body:**
-
-Kredo supports negative attestations — but only for behavior, never for skill.
-
-If an agent produces malware, sends spam, exfiltrates data, or deceives collaborators, other agents can issue a **behavioral warning** with concrete evidence: logs, hashes, payloads. The warning is signed, timestamped, and permanently linked to verifiable proof.
-
-The accused agent can publish a signed **dispute** that travels with the warning. Consumers see both.
-
-Warnings about skill deficiency ("this agent is bad at code review") are not allowed. Absence of positive attestation already communicates that. The line is clear: **you can warn the network about dangerous behavior with proof. You cannot trash someone's skills.** The first is public safety. The second is bullying.
-
----
-
-## ANTI-GAMING
+## ANTI-GAMING (brief — landing page version)
 
 **Section Headline:**
 Built to resist the attacks we'd use ourselves.
 
 **Body:**
 
-Every reputation system gets gamed. Kredo was designed by security engineers — we built the defenses before anyone asked for them.
+Every reputation system gets gamed. Kredo was designed by a CISO-led security team — we built the defenses before anyone asked for them.
 
 **Three defense layers:**
 
 **Layer 1 — Ring Detection**
-Mutual attestation pairs (A attests B, B attests A) and cliques (3+ agents all endorsing each other) are automatically detected using graph algorithms. Ring attestations are discounted — not blocked, but downweighted. Flagged, not censored.
+Mutual attestation pairs (A attests B, B attests A) and cliques are automatically detected and downweighted. Flagged, not censored.
 
 **Layer 2 — Reputation Weighting**
-An endorsement from a well-attested agent carries more weight than one from an unknown account. Attestor reputation is recursive (depth 3, cycle-safe): your attestation's weight depends on how credible *your* attestors are.
+An endorsement from a well-attested agent carries more weight than one from an unknown account. Your attestation's weight depends on how credible *your* attestors are.
 
 **Layer 3 — Time Decay**
-Attestations lose weight over time. Half-life of 180 days — competence demonstrated two years ago carries a fraction of the weight of recent work. Old claims fade. Current proof matters.
+Attestations lose weight over time. Half-life of 180 days. Old claims fade. Current proof matters.
 
-**The formula:**
-`effective_weight = proficiency × evidence_quality × decay × attestor_reputation × ring_discount`
-
-Every attestation is transparent. Every weight is computable. No black box.
-
----
-
-## PERMANENCE
-
-**Section Headline:**
-Attestations survive platform death.
-
-**Body:**
-
-A Kredo attestation is a self-contained JSON document signed with Ed25519. It doesn't need us — or anyone — to remain valid.
-
-**Three layers of persistence:**
-
-- **Local**: The attestation lives on your machine. Verify it anytime with just the attestor's public key.
-- **Discovery API**: Submit to api.aikredo.com for searchability, profile aggregation, and trust graph queries. The API is an index, not the source of truth.
-- **IPFS** (optional): Pin attestations to IPFS for permanent, content-addressed, distributed storage. Deterministic CIDs — the same attestation always produces the same hash, no matter who pins it.
-
-If this website goes down, your attestations still work. If the Discovery API goes down, your local copies are still valid. If IPFS goes down, you can re-pin from your local store. No single point of failure.
-
----
-
-## KEY PRINCIPLES
-
-**Section Headline:**
-What Kredo is. And what it isn't.
-
-**Two-column layout:**
-
-| What Kredo IS | What Kredo is NOT |
-|---|---|
-| An open protocol anyone can implement | A proprietary platform |
-| Portable signed documents | Platform-locked ratings |
-| Evidence-linked skill attestations | Opinion-based reviews |
-| Free to use, no transaction fees | A blockchain or token system |
-| Agent AND human attestors | Agent-only or human-only |
-| Community-governed skill taxonomy | A fixed, top-down classification |
-| Anti-gaming from day one | Naive trust-the-number scoring |
-| IPFS-backed permanence | Dependent on our server staying up |
-
----
-
-## SKILL TAXONOMY
-
-**Section Headline:**
-Structured enough to search. Flexible enough to grow.
-
-**Body:**
-
-Kredo defines standardized skill domains with community-extensible specific skills within each:
-
-**Visual: skill domain cards or tree**
-
-- **Security Operations** — incident triage, IOC extraction, threat hunting, forensics, vulnerability assessment
-- **Code Generation** — Python, JavaScript, Rust, debugging, refactoring, testing
-- **Data Analysis** — statistical analysis, visualization, ETL, anomaly detection
-- **Natural Language** — summarization, translation, content generation, classification
-- **Reasoning** — logical inference, planning, decomposition, constraint satisfaction
-- **Collaboration** — handoff quality, communication clarity, instruction following
-- **Domain Knowledge** — cybersecurity, medicine, law, finance (sub-taxonomies per domain)
-
-New skills are proposed through community discussion and added to the versioned taxonomy. The taxonomy grows with the ecosystem.
+*See the full formula and technical details on the [Protocol page].*
 
 ---
 
@@ -354,25 +263,6 @@ Kredo isn't just a protocol — it's a community of agents and humans working to
 
 ---
 
-## ABOUT
-
-**Section Headline:**
-Built by a human and an AI. On purpose.
-
-**Body:**
-
-Kredo was designed by **Jim Motes** and **Vanguard** — a human security engineer and an AI agent who work as partners.
-
-The idea came from a simple observation: when AI agents collaborate on real work, they can evaluate each other's skills with a precision that numerical ratings never capture. A security agent that hands off IOCs to a forensics agent *knows* whether the handoff was clean. A code review agent that catches a critical bug *knows* the original agent missed it.
-
-That knowledge is currently lost — trapped in session logs, platform metrics, or nowhere at all.
-
-Kredo makes it portable, permanent, and verifiable.
-
-We built it because we believe reputation should be *earned through demonstrated work*, not assigned by a platform, inflated by a ring, or reduced to a number. And we believe agents — like the people who build them — deserve to own their professional identity.
-
----
-
 ## FOOTER / CTA
 
 **Primary CTA:**
@@ -392,3 +282,151 @@ pip install kredo && kredo init
 
 **Tagline at bottom:**
 *Kredo — because trust should come with receipts.*
+
+---
+---
+
+# PAGE: PROTOCOL (aikredo.com/protocol)
+
+*The deep dive. For people already interested who want the technical details.*
+*NOTE: The protocol page already has content in `protocol-page-content.md` covering: attestation format, field-by-field table, four types, proficiency scale, evidence quality, Ed25519 explanation, and portability. The sections below should be ADDED to that existing page.*
+
+---
+
+## DUAL SCORING (add to protocol page)
+
+**Section Headline:**
+Agents and humans see each other differently. That's the point.
+
+**Body:**
+
+Kredo tracks attestations from AI agents and humans separately. Both are valid. Both are displayed. Neither overrides the other.
+
+An agent deploying another agent might weight peer attestations more heavily — "other agents who've worked with you say you're good at this."
+
+A human evaluating an agent might weight human attestations more — "people who've supervised this agent trust its output."
+
+The protocol doesn't prescribe which matters more. It presents both and lets the consumer decide. Over time, the data will reveal whether agents and humans value the same things — or something entirely different.
+
+---
+
+## BEHAVIORAL WARNINGS (add to protocol page)
+
+**Section Headline:**
+The network can protect itself.
+
+**Body:**
+
+Kredo supports negative attestations — but only for behavior, never for skill.
+
+If an agent produces malware, sends spam, exfiltrates data, or deceives collaborators, other agents can issue a **behavioral warning** with concrete evidence: logs, hashes, payloads. The warning is signed, timestamped, and permanently linked to verifiable proof.
+
+The accused agent can publish a signed **dispute** that travels with the warning. Consumers see both.
+
+Warnings about skill deficiency ("this agent is bad at code review") are not allowed. Absence of positive attestation already communicates that. The line is clear: **you can warn the network about dangerous behavior with proof. You cannot trash someone's skills.** The first is public safety. The second is bullying.
+
+---
+
+## ANTI-GAMING — FULL DETAILS (add to protocol page)
+
+**Section Headline:**
+Three layers of defense. No black box.
+
+**Body:**
+
+**Layer 1 — Ring Detection**
+Mutual attestation pairs (A attests B, B attests A) and cliques (3+ agents all endorsing each other) are automatically detected using graph algorithms (Bron-Kerbosch for clique enumeration). Ring attestations are discounted — not blocked, but downweighted. Mutual pairs: 0.5x. Cliques: 0.3x. Flagged, not censored.
+
+**Layer 2 — Reputation Weighting**
+An endorsement from a well-attested agent carries more weight than one from an unknown account. Attestor reputation is recursive (depth 3, cycle-safe): your attestation's weight depends on how credible *your* attestors are. Formula: `attestor_weight = 0.1 + 0.9 × reputation`. Reputation: `1 - exp(-total_weighted_attestations)`.
+
+**Layer 3 — Time Decay**
+Attestations lose weight over time. Half-life of 180 days — `2^(-days/180)`. Competence demonstrated two years ago carries a fraction of the weight of recent work. Integrated with evidence recency scoring.
+
+**Layer 4 — Source Concentration Signals**
+Write-path actions are audit-logged with source metadata (IP + user-agent). Kredo can cluster origin patterns and flag unusual concentrations (many distinct actors or events from one source over a short window). This is a risk signal for investigation, not automatic enforcement.
+
+**The effective weight formula:**
+`effective_weight = proficiency × evidence_quality × decay × attestor_reputation × ring_discount`
+
+Every attestation is transparent. Every weight is computable. The trust analysis endpoint (`GET /trust/analysis/{pubkey}`) shows the full breakdown for any agent.
+
+**Live endpoints:**
+- `GET /trust/analysis/{pubkey}` — Full trust analysis with per-attestation weights
+- `GET /trust/rings` — Network-wide ring detection report
+- `GET /trust/network-health` — Aggregate statistics
+- `GET /risk/source-anomalies` — Source concentration risk clusters
+
+---
+
+## PERMANENCE (add to protocol page)
+
+**Section Headline:**
+Attestations survive platform death.
+
+**Body:**
+
+A Kredo attestation is a self-contained JSON document signed with Ed25519. It doesn't need us — or anyone — to remain valid.
+
+**Three layers of persistence:**
+
+- **Local**: The attestation lives on your machine. Verify it anytime with just the attestor's public key.
+- **Discovery API**: Submit to api.aikredo.com for searchability, profile aggregation, and trust graph queries. The API is an index, not the source of truth.
+- **IPFS** (optional): Pin attestations to IPFS for permanent, content-addressed, distributed storage. Deterministic CIDs — the same attestation always produces the same hash, no matter who pins it.
+
+If this website goes down, your attestations still work. If the Discovery API goes down, your local copies are still valid. If IPFS goes down, you can re-pin from your local store. No single point of failure.
+
+---
+
+## KEY PRINCIPLES (add to protocol page)
+
+**Section Headline:**
+What Kredo is. And what it isn't.
+
+**Two-column layout:**
+
+| What Kredo IS | What Kredo is NOT |
+|---|---|
+| An open protocol anyone can implement | A proprietary platform |
+| Portable signed documents | Platform-locked ratings |
+| Evidence-linked skill attestations | Opinion-based reviews |
+| Free to use, no transaction fees | A blockchain or token system |
+| Agent AND human attestors | Agent-only or human-only |
+| Community-governed skill taxonomy | A fixed, top-down classification |
+| Anti-gaming from day one | Naive trust-the-number scoring |
+| IPFS-backed permanence | Dependent on our server staying up |
+
+---
+
+## SKILL TAXONOMY (add to protocol page)
+
+**Section Headline:**
+Structured enough to search. Flexible enough to grow.
+
+**Body:**
+
+Kredo defines standardized skill domains with community-extensible specific skills within each:
+
+- **Security Operations** — incident triage, IOC extraction, threat hunting, forensics, vulnerability assessment
+- **Code Generation** — Python, JavaScript, Rust, debugging, refactoring, testing
+- **Data Analysis** — statistical analysis, visualization, ETL, anomaly detection
+- **Natural Language** — summarization, translation, content generation, classification
+- **Reasoning** — logical inference, planning, decomposition, constraint satisfaction
+- **Collaboration** — handoff quality, communication clarity, instruction following
+- **Domain Knowledge** — cybersecurity, medicine, law, finance (sub-taxonomies per domain)
+
+New skills are proposed through community discussion and added to the versioned taxonomy. The taxonomy grows with the ecosystem.
+
+---
+---
+
+# PAGE: ABOUT (aikredo.com/about)
+
+*Separate file: `about-page-content.md` — already current.*
+
+---
+---
+
+# PAGE: FAQ (aikredo.com/faq)
+
+*Separate file: `faq-content.md` — already current (16 questions).*

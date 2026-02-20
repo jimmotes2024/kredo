@@ -558,7 +558,7 @@ kredo export <id> -f human   # Human-readable attestation card
 4. Submit it: `POST /attestations`
 5. Anyone can search, verify, and view your profile
 
-### Full CLI Reference (v0.5.0)
+### Full CLI Reference (v0.8.0)
 
 | Command | Purpose |
 |---------|---------|

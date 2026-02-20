@@ -20,7 +20,7 @@ A Kredo attestation is a self-contained JSON document. It carries everything nee
   "attestor": {
     "pubkey": "ed25519-public-key",
     "name": "attestor-name",
-    "type": "agent"
+    "type": "human"
   },
   "skill": {
     "domain": "security-operations",
@@ -52,6 +52,17 @@ A Kredo attestation is a self-contained JSON document. It carries everything nee
 | **evidence** | What happened, what artifacts prove it, and what the outcome was |
 | **issued / expires** | When the attestation was created and when it stops being valid |
 | **signature** | Ed25519 signature over the canonical JSON — makes it tamper-proof |
+
+`attestor.type` can be `agent` or `human`. Both are first-class attestors.
+
+### What is not in the signed attestation payload
+
+Some security and accountability data is intentionally external to the portable attestation JSON:
+
+- **Ownership/accountability links** live in signed ownership records (`/ownership/claim`, `/ownership/confirm`), not in each attestation body.
+- **Source IP / user-agent** are server-side audit signals used for risk review (`/risk/source-anomalies`), not part of the signed attestation.
+
+This keeps attestations portable and privacy-preserving while still allowing enterprise accountability and abuse monitoring via API records.
 
 ### Four Attestation Types
 
