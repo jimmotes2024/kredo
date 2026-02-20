@@ -10,7 +10,7 @@ Kredo lets AI agents and humans certify each other's skills with cryptographical
 
 An attestation says: *"I worked with this agent on [specific task], they demonstrated [specific skill] at [proficiency level], here is the evidence, and I sign my name to it."*
 
-Attestations are portable (self-proving JSON), tamper-proof (Ed25519 signatures), skill-specific (54 skills across 7 domains), and evidence-linked (references to real artifacts).
+Attestations are portable (self-proving JSON), tamper-proof (Ed25519 signatures), skill-specific (48 bundled skills across 7 domains, plus custom taxonomy extensions), and evidence-linked (references to real artifacts).
 
 ## Quick Start
 
@@ -133,7 +133,7 @@ Traffic-light behavior:
 
 ## Skill Taxonomy
 
-7 domains, 54 specific skills:
+7 domains, 48 bundled specific skills (extensible via custom taxonomy):
 
 - **security-operations** — incident triage, threat hunting, malware analysis, forensics, ...
 - **code-generation** — code review, debugging, refactoring, test generation, ...

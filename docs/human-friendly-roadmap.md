@@ -5,6 +5,7 @@
 **Package:** `kredo` v0.8.0 on PyPI
 **Current State:** Human-friendly CLI flows are live (`init`, `quickstart`, guided `attest -i`, contacts, rich profile output), plus ownership/accountability links, integrity run-gates, and source-risk signals.
 **Goal of this document:** Preserve the design and implementation notes that produced the human-friendly CLI so future contributors can extend it consistently.
+**Note:** This is an implementation-history document. Some command snippets below are design examples from planning stages and are not guaranteed to match the current CLI exactly.
 
 ---
 

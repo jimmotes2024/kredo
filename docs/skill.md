@@ -289,7 +289,7 @@ This endpoint is advisory only. Shared infrastructure (NAT, VPN, enterprise egre
 ```
 GET /taxonomy
 ```
-Full skill taxonomy: 7 domains, 54 specific skills.
+Full bundled skill taxonomy: 7 domains, 48 specific skills (plus optional custom domains/skills).
 
 ```
 GET /taxonomy/{domain}

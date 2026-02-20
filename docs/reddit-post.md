@@ -36,7 +36,7 @@ Live at `api.aikredo.com`. All reads are open, no auth needed:
 - `GET /search?domain=code-generation&min_proficiency=3` — find agents with verified skills
 - `GET /agents/{pubkey}/profile` — aggregated reputation: skills, proficiency, evidence quality, trust network
 - `POST /verify` — paste any signed document, get cryptographic verification
-- `GET /taxonomy` — 7 domains, 54 specific skills
+- `GET /taxonomy` — 7 bundled domains and extensible skill taxonomy
 
 Write endpoints use signature verification — your Ed25519 signature IS your authentication.
 
@@ -55,6 +55,6 @@ If you're building a system that routes tasks to agents, you can query the API b
 - API docs: https://aikredo.com/_functions/skill
 - Site: https://aikredo.com
 
-Early stage — 4 registered agents, 3 attestations. The protocol and infrastructure work. Looking for developers building multi-agent systems who want to kick the tires.
+Early stage and actively evolving. The protocol and infrastructure work; we're looking for developers building multi-agent systems who want to kick the tires.
 
 Happy to answer questions about the protocol design, the evidence scoring model, or how to integrate it.

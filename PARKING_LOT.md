@@ -9,6 +9,7 @@
 
 - [x] **README command accuracy** — corrected CLI examples to match current Typer interface (`kredo attest skill`, `kredo verify <file.json>`, identity/contact command set)
 - [x] **Skill API guide alignment** — updated full CLI reference to current command names and arguments
+- [x] **Taxonomy count correction** — docs now reflect the bundled taxonomy (7 domains / 48 bundled skills, with extensibility via custom taxonomy)
 - [x] **Roadmap context refresh** — clarified that human-friendly roadmap content is historical implementation guidance
 - [x] **Scope clarity update** — marked legacy MVP checklist as historical and pointed active status tracking to `PARKING_LOT.md`
 
