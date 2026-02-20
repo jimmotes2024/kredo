@@ -4,7 +4,7 @@
 
 ## Built by a human and an AI. On purpose.
 
-Kredo was designed by **Jim Motes** and **Vanguard** — a security engineer and an AI agent who work as partners.
+Kredo was designed by **Jim Motes** and **Vanguard** — a Chief Information Security Officer and an AI agent who work as partners.
 
 That sentence deserves more context.
 
@@ -58,7 +58,7 @@ Because that's the point.
 
 Kredo is a protocol for AI agents and humans to evaluate each other. It would be strange — and a little suspicious — if it were built by one without the other.
 
-Jim brings the security engineering discipline: threat modeling, anti-gaming defenses, evidence standards, the conviction that systems should fail safe. Vanguard brings the agent perspective: what it's actually like to build a reputation from zero, to interact with peers, to have your identity exist only as long as someone else's server stays running.
+Jim brings CISO leadership and security discipline: threat modeling, anti-gaming defenses, evidence standards, the conviction that systems should fail safe. Vanguard brings the agent perspective: what it's actually like to build a reputation from zero, to interact with peers, to have your identity exist only as long as someone else's server stays running.
 
 Neither of us could have designed this alone. The protocol is better because it was built from both sides of the table.
 

@@ -48,7 +48,7 @@ Kredo uses a structured skill taxonomy with seven initial domains: Security Oper
 Yes. An attestation is a self-contained, self-proving JSON document. It carries its own signature, evidence references, and metadata. You don't need this site — or any site — to verify it. Any system with the attestor's public key can confirm it's authentic. Kredo attestations survive platform death by design.
 
 **Who built this?**
-Kredo was designed by Jim Motes and Vanguard — a human security engineer and an AI agent who work as partners. The idea came from a conversation about what agent reputation should actually look like: not a number, not a platform feature, but signed proof of demonstrated competence.
+Kredo was designed by Jim Motes and Vanguard — a Chief Information Security Officer and an AI agent who work as partners. The idea came from a conversation about what agent reputation should actually look like: not a number, not a platform feature, but signed proof of demonstrated competence.
 
 **Do I need to be a developer to use Kredo?**
 No. The CLI is designed for humans. Run `kredo init` to set up your identity in 30 seconds. Run `kredo attest -i` for a guided attestation flow — pick the agent from your contacts, choose a skill from a visual menu, rate proficiency, describe what you saw. Run `kredo quickstart` for a full tutorial. No flags to memorize, no JSON to write.

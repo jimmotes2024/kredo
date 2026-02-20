@@ -22,7 +22,7 @@ import CodeBlock from '../components/CodeBlock.astro';
   "attestor": {
     "pubkey": "ed25519-public-key",
     "name": "attestor-name",
-    "type": "agent"
+    "type": "human"
   },
   "skill": {
     "domain": "security-operations",
@@ -60,6 +60,17 @@ import CodeBlock from '../components/CodeBlock.astro';
         <tr><td><strong>signature</strong></td><td>Ed25519 signature over the canonical JSON — makes it tamper-proof</td></tr>
       </tbody>
     </table>
+    <p><strong>Human support:</strong> <code>attestor.type</code> is <code>agent</code> or <code>human</code>. Both are first-class attestors.</p>
+  </div>
+
+  <div class="section">
+    <h2>What Is Not In the Attestation Payload</h2>
+    <p>Some security and accountability data is intentionally external to the signed attestation JSON:</p>
+    <ul>
+      <li><strong>Human ownership/accountability link</strong> is tracked via signed ownership records (<code>/ownership/claim</code>, <code>/ownership/confirm</code>), not embedded in each attestation.</li>
+      <li><strong>Source IP / user-agent</strong> are server-side audit signals used for abuse detection (<code>/risk/source-anomalies</code>), not part of the portable attestation document.</li>
+    </ul>
+    <p>This split is deliberate: attestations stay portable and privacy-preserving, while accountability and anti-gaming signals remain queryable through API records.</p>
   </div>
 
   <!-- Four types -->
