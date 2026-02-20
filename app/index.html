@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kredo — Portable Agent Attestation</title>
+  <meta name="description" content="Create and verify Ed25519-signed attestations for AI agents and humans. No installation required.">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.aikredo.com; img-src 'self' data:; frame-ancestors 'none';">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo"><span>K</span>redo</div>
+      <nav>
+        <a href="#/setup">Setup</a>
+        <a href="#/dashboard">Dashboard</a>
+        <a href="#/governance">Governance</a>
+        <a href="#/attest">Attest</a>
+        <a href="#/browse">Browse</a>
+        <a href="#/verify">Verify</a>
+        <a href="#/taxonomy">Taxonomy</a>
+        <a href="https://aikredo.com/" class="nav-main-link">Back to Main Site</a>
+      </nav>
+      <div class="header-status">
+        <span id="identity-status"><span class="dot offline"></span>No identity</span>
+        &middot;
+        <span id="api-status"><span class="dot offline"></span>API</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="alerts"></div>
+
+  <main id="view">
+    <div class="loading"><div class="spinner"></div><span>Loading...</span></div>
+  </main>
+
+  <footer>
+    <a href="https://aikredo.com" target="_blank">aikredo.com</a>
+    &middot;
+    <a href="https://github.com/jimmotes2024/kredo" target="_blank">GitHub</a>
+    &middot;
+    <a href="https://api.aikredo.com/health" target="_blank">API</a>
+    &middot;
+    Kredo Protocol v1.0
+  </footer>
+
+  <!-- Vendored dependencies -->
+  <script src="js/lib/tweetnacl.min.js"></script>
+
+  <!-- Core modules (order matters) -->
+  <script src="js/crypto.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/ui.js"></script>
+
+  <!-- Views -->
+  <script src="js/views/setup.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/governance.js"></script>
+  <script src="js/views/attest.js"></script>
+  <script src="js/views/browse.js"></script>
+  <script src="js/views/verify.js"></script>
+  <script src="js/views/taxonomy.js"></script>
+
+  <!-- App (must be last) -->
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -132,6 +132,15 @@ const KredoCrypto = (() => {
     };
   }
 
+  /**
+   * Extract the 32-byte seed from a 64-byte tweetnacl secret key.
+   * Tweetnacl stores secretKey as seed(32) || pubkey(32), so the seed
+   * is the first 64 hex characters of the 128-char secret key hex string.
+   */
+  function seedFromSecret(secretKeyHex) {
+    return secretKeyHex.slice(0, 64);
+  }
+
   // --- Signing ---
 
   /**
@@ -324,6 +333,7 @@ const KredoCrypto = (() => {
     canonicalJSONBytes,
     generateKeypair,
     pubkeyFromSecret,
+    seedFromSecret,
     keypairFromSeed,
     sign,
     verify,
