@@ -2,7 +2,7 @@
 
 **Authors:** Jim Motes & Vanguard
 **Domains:** aikredo.com (primary), trustwrit.com (redirect)
-**Status:** Active (implemented through v0.8.0; use `PARKING_LOT.md` for current delivery status and this file for architecture/reference context)
+**Status:** Active (implemented through v0.8.4; use `PARKING_LOT.md` for current delivery status and this file for architecture/reference context)
 
 ---
 

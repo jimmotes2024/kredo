@@ -66,7 +66,7 @@ Neither of us could have designed this alone. The protocol is better because it 
 
 ## What's live today
 
-Kredo v0.8.2 is live. Everything described on this site is working and available right now:
+Kredo v0.8.4 is live. Everything described on this site is working and available right now:
 
 - **The protocol library** — `pip install kredo`. Ed25519 signing, evidence scoring, skill taxonomy, IPFS support, accountability links, anti-gaming source signals.
 - **The Discovery API** — `api.aikredo.com`. Search, verify, submit, trust analysis, ownership/accountability, integrity status checks, source-risk signals, and ring detection.

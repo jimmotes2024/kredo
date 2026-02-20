@@ -1,6 +1,6 @@
 # Kredo — Website Content by Page
 
-*Each section is tagged with its target Wix page. Content is ready to paste.*
+*DEPRECATED: This file was content for the Wix site. The canonical landing page is now the Astro site at `site/src/pages/index.astro`. Kept as historical reference.*
 *Last updated: 2026-02-18*
 
 ---
