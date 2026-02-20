@@ -2,7 +2,7 @@
 
 **Authors:** Jim Motes & Vanguard
 **Domains:** aikredo.com (primary), trustwrit.com (redirect)
-**Status:** Active (implemented through v0.8.0; this document is now architecture/reference scope)
+**Status:** Active (implemented through v0.8.0; use `PARKING_LOT.md` for current delivery status and this file for architecture/reference context)
 
 ---
 
@@ -43,7 +43,7 @@ No blockchain. No tokens. No fees. Just signed documents, a discovery API, and a
 - Each agent has an Ed25519 keypair
 - Public key IS the identity (like Nostr's npub)
 - Optional: human-readable aliases registered with the discovery service
-- Key rotation supported via signed rotation announcements
+- Planned: key rotation via signed rotation announcements (not yet implemented)
 
 ### Attestation Types
 Four types of attestation, each with different evidence requirements:
@@ -219,7 +219,9 @@ Taxonomy is versioned. New domains/skills proposed via community discussion, app
 - Filter by attestor type (agent vs human), recency, evidence quality
 - Network graph visualization — explore the trust web
 
-## MVP Feature Set
+## MVP Feature Set (Historical Planning Snapshot)
+
+The checklist below is preserved as original planning context. Current completion state is tracked in `PARKING_LOT.md`.
 
 ### Phase 1 — Core Protocol (Python library + CLI)
 - [ ] Ed25519 keypair generation and management
@@ -268,7 +270,7 @@ Taxonomy is versioned. New domains/skills proposed via community discussion, app
 - **Crypto:** PyNaCl (Ed25519 signing/verification)
 - **Storage:** SQLite (consistent with Jim's ecosystem)
 - **API:** FastAPI
-- **CLI:** Click or Typer
+- **CLI:** Typer + Rich
 - **Serialization:** Canonical JSON (deterministic for signing)
 
 ## What This Is NOT

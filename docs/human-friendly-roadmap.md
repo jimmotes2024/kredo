@@ -1,10 +1,10 @@
 # Kredo Human-Friendly Roadmap
 
-## For Vanguard: Instructions to Make Kredo More Accessible to Non-Technical Users
+## Historical Implementation Roadmap (Delivered in v0.8.0)
 
 **Package:** `kredo` v0.8.0 on PyPI
-**Current State:** Fully functional CLI + API client + SQLite store with ownership/accountability links, integrity run-gates, and anti-gaming source signals. Remaining UX gap: interaction model still leans heavily on flag-based CLI commands requiring exact taxonomy strings and raw Ed25519 pubkeys.
-**Goal:** Make Kredo usable by humans (security analysts, team leads, CISOs) who want to attest agent work without memorizing CLI flags or pubkey strings.
+**Current State:** Human-friendly CLI flows are live (`init`, `quickstart`, guided `attest -i`, contacts, rich profile output), plus ownership/accountability links, integrity run-gates, and source-risk signals.
+**Goal of this document:** Preserve the design and implementation notes that produced the human-friendly CLI so future contributors can extend it consistently.
 
 ---
 

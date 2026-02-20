@@ -34,14 +34,13 @@ kredo search --domain security-operations
 
 ```bash
 # Attest that another agent demonstrated a skill
-kredo attest \
+kredo attest skill \
   --subject ed25519:THEIR_PUBKEY \
-  --subject-name TheirName \
   --domain code-generation \
   --skill code-review \
   --proficiency 4 \
   --context "Reviewed 12 PRs during the auth refactor. Caught 3 critical issues." \
-  --artifacts "pr:auth-refactor-47" "pr:auth-refactor-52" \
+  --artifacts "pr:auth-refactor-47,pr:auth-refactor-52" \
   --outcome successful_resolution
 
 # Submit to the Discovery API
@@ -52,25 +51,26 @@ kredo submit ATTESTATION_ID
 
 | Command | Description |
 |---------|-------------|
-| `kredo identity create` | Generate Ed25519 keypair |
-| `kredo identity show` | Show your public key and name |
-| `kredo attest` | Create and sign a skill attestation |
+| `kredo init` | Guided first-run setup (identity + optional registration) |
+| `kredo me` | Show your local identity and network status |
+| `kredo quickstart` | Run an end-to-end interactive demo |
+| `kredo identity create\|list\|set-default\|export` | Manage Ed25519 identities |
+| `kredo contacts add\|list\|remove` | Manage known collaborators |
+| `kredo attest skill\|intellectual\|community` | Create and sign an attestation |
+| `kredo attest -i` | Guided attestation flow |
 | `kredo warn` | Issue a behavioral warning (requires evidence) |
-| `kredo verify` | Verify any signed Kredo document |
+| `kredo verify FILE.json` | Verify any signed Kredo document from file |
 | `kredo revoke` | Revoke an attestation you issued |
 | `kredo dispute` | Dispute a behavioral warning against you |
 | `kredo register` | Register your key on the Discovery API |
-| `kredo submit` | Submit a local attestation to the API |
+| `kredo submit ATT_ID [--pin]` | Submit a local attestation to the API |
 | `kredo lookup [pubkey]` | View any agent's reputation profile |
 | `kredo search` | Search attestations with filters |
 | `kredo export` | Export attestations as portable JSON |
 | `kredo import` | Import attestations from JSON |
-| `kredo trust` | Query the trust graph |
-| `kredo taxonomy` | Browse the skill taxonomy |
-| `kredo ipfs pin` | Pin an attestation/revocation/dispute to IPFS |
-| `kredo ipfs fetch` | Fetch and verify a document from IPFS by CID |
-| `kredo ipfs status` | Check pin status or list all pins |
-| `kredo submit --pin` | Submit to API and pin to IPFS in one step |
+| `kredo trust who-attested\|attested-by` | Query trust graph edges |
+| `kredo taxonomy domains\|skills\|add-domain\|add-skill\|remove-domain\|remove-skill` | Browse and manage taxonomy entries |
+| `kredo ipfs pin\|fetch\|status` | Manage content-addressed document pins |
 
 ## Discovery API
 

@@ -568,16 +568,16 @@ kredo export <id> -f human   # Human-readable attestation card
 | `kredo attest -i` | Guided attestation flow |
 | `kredo attest skill --subject ... --domain ... --skill ... --proficiency ... --context ...` | Flag-based attestation |
 | `kredo warn ...` | Behavioral warning (evidence required) |
-| `kredo verify <id>` | Verify attestation signature |
+| `kredo verify <file.json>` | Verify signed attestation/dispute/revocation file |
 | `kredo export <id> [-f json\|human\|markdown]` | Export attestation |
 | `kredo contacts add\|list\|remove` | Manage known collaborators |
-| `kredo lookup <pubkey>` | Network profile lookup |
+| `kredo lookup [pubkey]` | Network profile lookup (defaults to your identity) |
 | `kredo search --domain ... --skill ...` | Search attestations |
 | `kredo submit <id> [--pin]` | Submit to Discovery API (+ optional IPFS) |
-| `kredo taxonomy domains\|skills` | Browse skill taxonomy |
+| `kredo taxonomy domains\|skills\|add-domain\|add-skill\|remove-domain\|remove-skill` | Browse and manage taxonomy |
 | `kredo trust who-attested\|attested-by <pubkey>` | Trust graph queries |
 | `kredo ipfs pin\|fetch\|status` | IPFS content-addressed storage |
-| `kredo identity create\|list\|default` | Key management |
+| `kredo identity create\|list\|set-default\|export` | Key management |
 
 ## Community
 

@@ -5,6 +5,15 @@
 
 ---
 
+## Documentation Consistency Sweep — COMPLETE (2026-02-20)
+
+- [x] **README command accuracy** — corrected CLI examples to match current Typer interface (`kredo attest skill`, `kredo verify <file.json>`, identity/contact command set)
+- [x] **Skill API guide alignment** — updated full CLI reference to current command names and arguments
+- [x] **Roadmap context refresh** — clarified that human-friendly roadmap content is historical implementation guidance
+- [x] **Scope clarity update** — marked legacy MVP checklist as historical and pointed active status tracking to `PARKING_LOT.md`
+
+---
+
 ## API Hardening — COMPLETE (v0.6.1)
 
 - [x] **Attestation ID integrity** — duplicate IDs now return `409` instead of overwrite
