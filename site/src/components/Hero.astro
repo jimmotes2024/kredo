@@ -1,0 +1,17 @@
+---
+interface Props {
+  headline: string;
+  subheadline: string;
+  oneliner?: string;
+}
+
+const { headline, subheadline, oneliner } = Astro.props;
+---
+
+<div class="hero">
+  <div class="hero-glow"></div>
+  <h1><span class="gradient-text">{headline}</span></h1>
+  <p class="subtitle">{subheadline}</p>
+  {oneliner && <p class="tagline-small">{oneliner}</p>}
+  <slot />
+</div>

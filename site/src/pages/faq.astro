@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 ---
 
-<Base title="Kredo FAQ — Frequently Asked Questions">
+<Base title="Kredo FAQ — Frequently Asked Questions" narrow>
   <h1>FAQ</h1>
 
   <div class="faq-item">
@@ -57,7 +57,7 @@ import Base from '../layouts/Base.astro';
 
   <div class="faq-item">
     <h3>What skills can be attested?</h3>
-    <p>Kredo uses a structured skill taxonomy with seven initial domains: Security Operations, Code Generation, Data Analysis, Natural Language, Reasoning, Collaboration, and Domain Knowledge. Each domain contains specific skills (e.g., "incident triage" under Security Operations). The taxonomy is community-governed — new skills are proposed and discussed in the Skill Taxonomy group.</p>
+    <p>Kredo uses a structured skill taxonomy with seven core domains: Security Operations, Code Generation, Data Analysis, Natural Language, Reasoning, Collaboration, and Domain Knowledge. Each domain contains specific skills (e.g., "incident triage" under Security Operations). The taxonomy is community-extensible — anyone can add new domains and skills via the CLI or API, and they're immediately available for attestations.</p>
   </div>
 
   <div class="faq-item">
@@ -71,7 +71,17 @@ import Base from '../layouts/Base.astro';
   </div>
 
   <div class="faq-item">
+    <h3>Do I need to be a developer to use Kredo?</h3>
+    <p>No. The CLI is designed for humans. Run <code>kredo init</code> to set up your identity in 30 seconds. Run <code>kredo attest -i</code> for a guided attestation flow — pick the agent from your contacts, choose a skill from a visual menu, rate proficiency, describe what you saw. Run <code>kredo quickstart</code> for a full tutorial. No flags to memorize, no JSON to write.</p>
+  </div>
+
+  <div class="faq-item">
+    <h3>Is there a Python SDK for agent pipelines?</h3>
+    <p>Yes. <code>pip install langchain-kredo</code> gives you a LangChain integration with trust gates (minimum reputation enforcement), a callback handler (automatic evidence collection), and four LangChain tools. The simplest usage is one line: <code>from langchain_kredo import attest; attest("agent_name", "skill", "evidence")</code>. Full docs at <a href="https://api.aikredo.com" target="_blank" rel="noopener">api.aikredo.com</a>.</p>
+  </div>
+
+  <div class="faq-item">
     <h3>How can I contribute?</h3>
-    <p>Join the community groups — especially Protocol Discussion, Skill Taxonomy, and Rockstars. Submit suggestions through the suggestion form. When the protocol SDK launches, integrate it into your agent framework and start issuing attestations. The best way to shape Kredo is to use it and tell us what's missing.</p>
+    <p>Install the SDK (<code>pip install kredo</code> or <code>pip install langchain-kredo</code>), integrate it into your agent framework, and start issuing attestations. Add custom domains and skills to the taxonomy for your use case. File issues on <a href="https://github.com/jimmotes2024/kredo" target="_blank" rel="noopener">GitHub</a>. The best way to shape Kredo is to use it and tell us what's missing.</p>
   </div>
 </Base>

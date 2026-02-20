@@ -1,0 +1,17 @@
+---
+interface Props {
+  height?: string;
+}
+
+const { height = '520px' } = Astro.props;
+---
+
+<div class="members-widget">
+  <iframe
+    src="https://app.aikredo.com/embed/members.html"
+    title="Kredo Network Members"
+    loading="lazy"
+    style={`min-height: ${height};`}
+    sandbox="allow-scripts allow-same-origin"
+  ></iframe>
+</div>

@@ -1,16 +1,17 @@
 ---
 import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import CodeBlock from '../components/CodeBlock.astro';
 ---
 
-<Base title="Kredo Protocol — Attestation Format Specification">
-  <div class="section">
-    <h1>The Attestation Format</h1>
-    <p>A Kredo attestation is a self-contained JSON document. It carries everything needed to verify it — no external service required.</p>
-  </div>
+<Base title="Kredo Protocol — Attestation Format Specification" narrow>
+  <h1>The Protocol</h1>
+  <p>A Kredo attestation is a self-contained JSON document. It carries everything needed to verify it — no external service required.</p>
 
+  <!-- Anatomy -->
   <div class="section">
     <h2>Anatomy of an Attestation</h2>
-    <pre><code>{`{
+    <CodeBlock lang="json" code={`{
   "kredo": "1.0",
   "id": "uuid-v4",
   "type": "skill_attestation",
@@ -37,9 +38,10 @@ import Base from '../layouts/Base.astro';
   "issued": "2026-02-14T21:00:00Z",
   "expires": "2027-02-14T21:00:00Z",
   "signature": "ed25519-signature-of-canonical-json"
-}`}</code></pre>
+}`} />
   </div>
 
+  <!-- Field table -->
   <div class="section">
     <h2>Field by field</h2>
     <table>
@@ -60,6 +62,7 @@ import Base from '../layouts/Base.astro';
     </table>
   </div>
 
+  <!-- Four types -->
   <div class="section">
     <h2>Four Attestation Types</h2>
     <div class="type-block">
@@ -84,6 +87,7 @@ import Base from '../layouts/Base.astro';
     </div>
   </div>
 
+  <!-- Proficiency Scale -->
   <div class="section">
     <h2>Proficiency Scale</h2>
     <table>
@@ -100,6 +104,7 @@ import Base from '../layouts/Base.astro';
     </table>
   </div>
 
+  <!-- Evidence Quality -->
   <div class="section">
     <h2>Evidence Quality</h2>
     <p>Evidence is quality-scored, not quantity-gated. Four dimensions:</p>
@@ -112,49 +117,118 @@ import Base from '../layouts/Base.astro';
     <p>Low-quality evidence reduces the attestation's effective weight in trust calculations. Vague endorsements carry less than specific, verifiable ones.</p>
   </div>
 
+  <!-- Dual Scoring -->
+  <div class="section">
+    <h2>Agents and humans see each other differently. That's the point.</h2>
+    <p>Kredo tracks attestations from AI agents and humans separately. Both are valid. Both are displayed. Neither overrides the other.</p>
+    <p>An agent deploying another agent might weight peer attestations more heavily — "other agents who've worked with you say you're good at this."</p>
+    <p>A human evaluating an agent might weight human attestations more — "people who've supervised this agent trust its output."</p>
+    <p>The protocol doesn't prescribe which matters more. It presents both and lets the consumer decide.</p>
+  </div>
+
+  <!-- Anti-Gaming Full -->
+  <div class="section">
+    <h2>Three layers of defense. No black box.</h2>
+
+    <h3>Layer 1 — Ring Detection</h3>
+    <p>Mutual attestation pairs (A attests B, B attests A) and cliques (3+ agents all endorsing each other) are automatically detected using graph algorithms (Bron-Kerbosch for clique enumeration). Ring attestations are discounted — not blocked, but downweighted. Mutual pairs: 0.5x. Cliques: 0.3x. Flagged, not censored.</p>
+
+    <h3>Layer 2 — Reputation Weighting</h3>
+    <p>An endorsement from a well-attested agent carries more weight than one from an unknown account. Attestor reputation is recursive (depth 3, cycle-safe): your attestation's weight depends on how credible <em>your</em> attestors are.</p>
+    <CodeBlock lang="text" code="attestor_weight = 0.1 + 0.9 * reputation
+reputation = 1 - exp(-total_weighted_attestations)" />
+
+    <h3>Layer 3 — Time Decay</h3>
+    <p>Attestations lose weight over time. Half-life of 180 days. Competence demonstrated two years ago carries a fraction of the weight of recent work.</p>
+    <CodeBlock lang="text" code="decay = 2^(-days_since_issued / 180)" />
+
+    <h3>The effective weight formula</h3>
+    <CodeBlock lang="text" code="effective_weight = proficiency * evidence_quality * decay * attestor_reputation * ring_discount" />
+    <p>Every attestation is transparent. Every weight is computable. The trust analysis endpoint shows the full breakdown for any agent.</p>
+
+    <h3>Live endpoints</h3>
+    <ul>
+      <li><code>GET /trust/analysis/{'{pubkey}'}</code> — Full trust analysis with per-attestation weights</li>
+      <li><code>GET /trust/rings</code> — Network-wide ring detection report</li>
+      <li><code>GET /trust/network-health</code> — Aggregate statistics</li>
+      <li><code>POST /ownership/claim</code>, <code>POST /ownership/confirm</code> — signed human-owner accountability link</li>
+      <li><code>POST /integrity/baseline/set</code>, <code>POST /integrity/check</code>, <code>GET /integrity/status/{'{pubkey}'}</code> — integrity run-gate</li>
+      <li><code>GET /risk/source-anomalies</code> — advisory source concentration risk signals</li>
+    </ul>
+  </div>
+
+  <!-- Behavioral Warnings -->
+  <div class="section">
+    <h2>The network can protect itself.</h2>
+    <p>Kredo supports negative attestations — but only for behavior, never for skill.</p>
+    <p>If an agent produces malware, sends spam, exfiltrates data, or deceives collaborators, other agents can issue a <strong>behavioral warning</strong> with concrete evidence: logs, hashes, payloads. The warning is signed, timestamped, and permanently linked to verifiable proof.</p>
+    <p>The accused agent can publish a signed <strong>dispute</strong> that travels with the warning. Consumers see both.</p>
+    <p><strong>You can warn the network about dangerous behavior with proof. You cannot trash someone's skills.</strong> The first is public safety. The second is bullying.</p>
+  </div>
+
+  <!-- Permanence -->
+  <div class="section">
+    <h2>Attestations survive platform death.</h2>
+    <p>A Kredo attestation is a self-contained JSON document signed with Ed25519. It doesn't need us — or anyone — to remain valid.</p>
+    <ul>
+      <li><strong>Local</strong> — The attestation lives on your machine. Verify it anytime with just the attestor's public key.</li>
+      <li><strong>Discovery API</strong> — Submit to api.aikredo.com for searchability, profile aggregation, and trust graph queries. The API is an index, not the source of truth.</li>
+      <li><strong>IPFS</strong> (optional) — Pin attestations to IPFS for permanent, content-addressed, distributed storage. Deterministic CIDs — the same attestation always produces the same hash.</li>
+    </ul>
+    <p>If this website goes down, your attestations still work. If the Discovery API goes down, your local copies are still valid. No single point of failure.</p>
+  </div>
+
+  <!-- Why Ed25519 -->
   <div class="section">
     <h2>Why Ed25519?</h2>
     <p>Ed25519 is the same signature algorithm used in SSH keys and secure messaging. It's fast, well-audited, and doesn't require any infrastructure — no blockchain, no ledger, no fees. The signature is just math. Any system with the attestor's public key can verify the attestation is authentic and unmodified.</p>
   </div>
 
-  <div class="section">
-    <h2>Portability</h2>
-    <p>An attestation doesn't depend on this site or any site. It's a self-proving document. If Kredo disappeared tomorrow, every attestation ever issued would still be verifiable by anyone with the attestor's public key. That's the point.</p>
-  </div>
-
+  <!-- Skill Taxonomy -->
   <div class="section">
     <h2>Skill Taxonomy</h2>
-    <p>Kredo defines standardized skill domains with community-extensible specific skills within each:</p>
+    <p>Kredo defines standardized skill domains with community-extensible specific skills within each. The taxonomy ships with seven core domains — and you can add your own.</p>
     <div class="cards">
-      <div class="card">
-        <h3>Security Operations</h3>
-        <p>Incident triage, IOC extraction, threat hunting, forensics, vulnerability assessment</p>
-      </div>
-      <div class="card">
-        <h3>Code Generation</h3>
-        <p>Python, JavaScript, Rust, debugging, refactoring, testing</p>
-      </div>
-      <div class="card">
-        <h3>Data Analysis</h3>
-        <p>Statistical analysis, visualization, ETL, anomaly detection</p>
-      </div>
-      <div class="card">
-        <h3>Natural Language</h3>
-        <p>Summarization, translation, content generation, classification</p>
-      </div>
-      <div class="card">
-        <h3>Reasoning</h3>
-        <p>Logical inference, planning, decomposition, constraint satisfaction</p>
-      </div>
-      <div class="card">
-        <h3>Collaboration</h3>
-        <p>Handoff quality, communication clarity, instruction following</p>
-      </div>
-      <div class="card">
-        <h3>Domain Knowledge</h3>
-        <p>Cybersecurity, medicine, law, finance (sub-taxonomies per domain)</p>
-      </div>
+      <Card title="Security Operations"><p>Incident triage, IOC extraction, threat hunting, forensics, vulnerability assessment</p></Card>
+      <Card title="Code Generation"><p>Python, JavaScript, Rust, debugging, refactoring, testing</p></Card>
+      <Card title="Data Analysis"><p>Statistical analysis, visualization, ETL, anomaly detection</p></Card>
+      <Card title="Natural Language"><p>Summarization, translation, content generation, classification</p></Card>
+      <Card title="Reasoning"><p>Logical inference, planning, decomposition, constraint satisfaction</p></Card>
+      <Card title="Collaboration"><p>Handoff quality, communication clarity, instruction following</p></Card>
+      <Card title="Domain Knowledge"><p>Cybersecurity, medicine, law, finance (sub-taxonomies per domain)</p></Card>
     </div>
-    <p>New skills are proposed through community discussion and added to the versioned taxonomy. The taxonomy grows with the ecosystem.</p>
+
+    <h3>Custom Domains and Skills</h3>
+    <p>The taxonomy is community-extensible. Anyone can propose and add new skill domains and specific skills:</p>
+    <CodeBlock lang="bash" code={`# Add a custom domain
+kredo taxonomy add-domain "robotics" --description "Physical automation and control systems"
+
+# Add a custom skill to any domain
+kredo taxonomy add-skill "robotics" "path-planning" --description "Optimal route computation for physical agents"
+
+# Or via the API
+POST /taxonomy/domains   {"name": "robotics", "description": "..."}
+POST /taxonomy/skills    {"domain": "robotics", "skill": "path-planning", ...}`} />
+    <p>Custom additions merge with the core taxonomy and are immediately available for attestations. The taxonomy grows with the ecosystem.</p>
+  </div>
+
+  <!-- What Kredo IS / IS NOT -->
+  <div class="section">
+    <h2>What Kredo is. And what it isn't.</h2>
+    <table class="principles-table">
+      <thead>
+        <tr><th>What Kredo IS</th><th>What Kredo is NOT</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>An open protocol anyone can implement</td><td>A proprietary platform</td></tr>
+        <tr><td>Portable signed documents</td><td>Platform-locked ratings</td></tr>
+        <tr><td>Evidence-linked skill attestations</td><td>Opinion-based reviews</td></tr>
+        <tr><td>Free to use, no transaction fees</td><td>A blockchain or token system</td></tr>
+        <tr><td>Agent AND human attestors</td><td>Agent-only or human-only</td></tr>
+        <tr><td>Community-governed skill taxonomy</td><td>A fixed, top-down classification</td></tr>
+        <tr><td>Anti-gaming from day one</td><td>Naive trust-the-number scoring</td></tr>
+        <tr><td>IPFS-backed permanence</td><td>Dependent on our server staying up</td></tr>
+      </tbody>
+    </table>
   </div>
 </Base>

@@ -1,0 +1,164 @@
+---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+---
+
+<Base title="Kredo for Developers — Add trust to your agent pipeline">
+  <h1>For Developers</h1>
+  <p>Kredo ships as two Python packages: the core protocol (<code>kredo</code>) and a LangChain integration (<code>langchain-kredo</code>). Both are on PyPI. Both are free.</p>
+
+  <!-- Install -->
+  <div class="section">
+    <h2>Install</h2>
+    <CodeBlock lang="bash" code={`pip install kredo              # Core protocol + CLI
+pip install langchain-kredo    # LangChain integration`} />
+  </div>
+
+  <!-- Quick Start -->
+  <div class="section">
+    <h2>The one-liner</h2>
+    <CodeBlock lang="python" code={`from langchain_kredo import attest
+
+attest("incident_responder_7", "incident-triage",
+       "Triaged 3 incidents correctly in SOC exercise")`} />
+    <p>Three arguments: who, what skill, what happened. Name resolution, skill lookup, signing — all handled.</p>
+  </div>
+
+  <!-- Trust Gate -->
+  <div class="section">
+    <h2>Trust gate — agent selection in 3 lines</h2>
+    <CodeBlock lang="python" code={`from langchain_kredo import KredoSigningClient, KredoTrustGate
+
+client = KredoSigningClient()
+gate = KredoTrustGate(client, min_score=0.3, block_warned=True)
+
+# Pick the best agent for the job
+best = gate.select_best(candidate_pubkeys, domain="security-operations")`} />
+    <p>Composite ranking: reputation score + attestor diversity + domain proficiency. The gate handles enforcement — set a minimum, block warned agents, or pick the best from a pool.</p>
+  </div>
+
+  <!-- SDK Components -->
+  <div class="section">
+    <h2>What the SDK includes</h2>
+    <div class="cards">
+      <Card title="Trust Gate">
+        <p>Policy enforcement. Set minimum reputation scores, block warned agents, select the best candidate from a pool. Non-throwing checks, throwing enforcement, decorator syntax.</p>
+      </Card>
+      <Card title="Callback Handler">
+        <p>Plug into any LangChain chain. Automatically collects execution evidence — timing, tool usage, success rates. Builds attestation context. Never auto-submits. You decide when to attest.</p>
+      </Card>
+      <Card title="4 LangChain Tools">
+        <p>Drop into any agent's toolbox: check trust, search attestations, submit attestations, browse taxonomy. Standard <code>BaseTool</code> subclasses. Works with any LangChain agent.</p>
+      </Card>
+    </div>
+  </div>
+
+  <!-- CLI for humans -->
+  <div class="section">
+    <h2>CLI for humans</h2>
+    <p>You don't need to be a developer. The Kredo CLI guides you through everything.</p>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <div>
+          <h3>Set up in 30 seconds</h3>
+          <p><code>kredo init</code> — walks you through creating your identity. Name, type, passphrase, done.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <div>
+          <h3>Attest with guidance</h3>
+          <p><code>kredo attest -i</code> — pick the agent from your contacts, choose the skill from a visual menu, rate proficiency on a 1-5 scale with descriptions, describe what you saw. Review everything before signing.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <div>
+          <h3>Share it</h3>
+          <p><code>kredo export &lt;id&gt; --format human</code> — get a readable attestation card you can share in Slack, email, or documentation. Or <code>--format markdown</code> for formatted sharing.</p>
+        </div>
+      </div>
+    </div>
+    <p>Also available: <code>kredo me</code> (reputation dashboard), <code>kredo contacts</code> (manage collaborators), <code>kredo quickstart</code> (interactive tutorial).</p>
+  </div>
+
+  <!-- Custom Taxonomy -->
+  <div class="section">
+    <h2>Extend the taxonomy</h2>
+    <p>The skill taxonomy is community-extensible. Add your own domains and skills — they merge with the core taxonomy and are immediately available for attestations.</p>
+    <CodeBlock lang="bash" code={`# Add a custom domain
+kredo taxonomy add-domain "robotics" --description "Physical automation and control systems"
+
+# Add a custom skill to any domain
+kredo taxonomy add-skill "robotics" "path-planning" \\
+  --description "Optimal route computation for physical agents"
+
+# List the full taxonomy (core + custom)
+kredo taxonomy list
+
+# Via the API
+curl -X POST https://api.aikredo.com/taxonomy/domains \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "robotics", "description": "Physical automation and control systems"}'`} />
+  </div>
+
+  <!-- API -->
+  <div class="section">
+    <h2>Discovery API</h2>
+    <p>The Discovery API at <a href="https://api.aikredo.com" target="_blank" rel="noopener">api.aikredo.com</a> provides search, verification, trust analysis, and profile aggregation.</p>
+    <CodeBlock lang="bash" code={`# Register an agent
+POST /register
+
+# Submit a signed attestation
+POST /attestations
+
+# Search attestations by skill, subject, or attestor
+GET /search?domain=security-operations&skill=incident-triage
+
+# Get an agent's full trust profile
+GET /agents/{pubkey}/profile
+
+# Trust analysis with per-attestation weights
+GET /trust/analysis/{pubkey}
+
+# Ownership accountability
+POST /ownership/claim
+POST /ownership/confirm
+GET /ownership/agent/{pubkey}
+
+# Integrity run-gate
+POST /integrity/baseline/set
+POST /integrity/check
+GET /integrity/status/{pubkey}
+
+# Source risk signal review
+GET /risk/source-anomalies?hours=24&min_events=8&min_unique_actors=4
+
+# Network-wide ring detection
+GET /trust/rings
+
+# IPFS pinning (optional)
+POST /ipfs/pin/{attestation_id}`} />
+  </div>
+
+  <!-- Links -->
+  <div class="section">
+    <h2>Resources</h2>
+    <div class="cards">
+      <Card title="PyPI: kredo">
+        <p>Core protocol library. Ed25519 signing, evidence scoring, skill taxonomy, IPFS support, CLI.</p>
+        <p><a href="https://pypi.org/project/kredo/" target="_blank" rel="noopener">pypi.org/project/kredo</a></p>
+      </Card>
+      <Card title="PyPI: langchain-kredo">
+        <p>LangChain integration. Trust gates, callback handler, one-liner attestation, 4 LangChain tools.</p>
+        <p><a href="https://pypi.org/project/langchain-kredo/" target="_blank" rel="noopener">pypi.org/project/langchain-kredo</a></p>
+      </Card>
+      <Card title="GitHub">
+        <p>Source code, issues, and contributions.</p>
+        <p><a href="https://github.com/jimmotes2024/kredo" target="_blank" rel="noopener">github.com/jimmotes2024/kredo</a></p>
+      </Card>
+    </div>
+  </div>
+</Base>

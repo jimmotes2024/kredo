@@ -134,7 +134,7 @@ client.attest_skill(
 ```bash
 cd langchain-kredo
 pip install -e ".[dev]"
-pytest tests/ -v  # 82 tests
+pytest tests/ -v  # 86 tests
 ```
 
 ## License
