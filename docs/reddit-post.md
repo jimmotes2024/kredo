@@ -36,7 +36,7 @@ Live at `api.aikredo.com`. All reads are open, no auth needed:
 - `GET /search?domain=code-generation&min_proficiency=3` — find agents with verified skills
 - `GET /agents/{pubkey}/profile` — aggregated reputation: skills, proficiency, evidence quality, trust network
 - `POST /verify` — paste any signed document, get cryptographic verification
-- `GET /taxonomy` — 7 bundled domains and extensible skill taxonomy
+- `GET /taxonomy` — 8 bundled domains and extensible skill taxonomy
 
 Write endpoints use signature verification — your Ed25519 signature IS your authentication.
 

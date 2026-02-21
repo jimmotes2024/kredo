@@ -9,7 +9,7 @@ const DashboardView = (() => {
   async function render() {
     const identity = KredoStorage.getIdentity();
     if (!identity) {
-      KredoUI.renderView('<div class="empty-state">No identity found. <a href="#/setup">Create one</a> to get started.</div>');
+      KredoUI.renderView('<div class="empty-state">Not logged in. <a href="#/setup/recover">Load Identity (Login)</a> to continue.</div>');
       return;
     }
 
@@ -22,7 +22,7 @@ const DashboardView = (() => {
       ${showPlaintextWarning ? `
       <div class="warning-banner warning-banner-subtle">
         <strong>&#9888; Unencrypted key:</strong> Your private key is stored without passphrase encryption.
-        Consider re-creating your identity with a passphrase for added security.
+        Use Setup &rarr; <strong>Encrypt Current Key</strong> to secure this identity without changing pubkey.
       </div>` : ''}
 
       <div class="card">

@@ -8,9 +8,9 @@ const KredoApp = (() => {
   const routes = {
     '':          { view: 'setup',    label: 'Setup',     module: () => SetupView },
     'setup':     { view: 'setup',    label: 'Setup',     module: () => SetupView },
-    'dashboard': { view: 'dashboard',label: 'Dashboard', module: () => DashboardView, requiresIdentity: true },
-    'governance':{ view: 'governance',label: 'Governance', module: () => GovernanceView, requiresIdentity: true },
-    'attest':    { view: 'attest',   label: 'Attest',    module: () => AttestView, requiresIdentity: true },
+    'dashboard': { view: 'dashboard',label: 'Dashboard', module: () => DashboardView },
+    'governance':{ view: 'governance',label: 'Governance', module: () => GovernanceView },
+    'attest':    { view: 'attest',   label: 'Attest',    module: () => AttestView },
     'browse':    { view: 'browse',   label: 'Browse',    module: () => BrowseView },
     'verify':    { view: 'verify',   label: 'Verify',    module: () => VerifyView },
     'taxonomy':  { view: 'taxonomy', label: 'Taxonomy',  module: () => TaxonomyView },
@@ -38,14 +38,9 @@ const KredoApp = (() => {
     const baseRoute = hash.split('/')[0];
     const routeInfo = routes[baseRoute] || routes[hash] || routes[''];
 
-    // Guard: redirect to setup if view requires identity and none exists
-    if (routeInfo.requiresIdentity && !KredoStorage.hasIdentity()) {
-      navigate('setup');
-      return;
-    }
-
-    // Guard: redirect to dashboard if user has identity and lands on setup
-    if (routeInfo.view === 'setup' && KredoStorage.hasIdentity()) {
+    // Default landing: if identity exists and no explicit route, open dashboard.
+    // Keep #/setup accessible for backup/export/reset tasks.
+    if (hash === '' && KredoStorage.hasIdentity()) {
       navigate('dashboard');
       return;
     }
@@ -73,8 +68,8 @@ const KredoApp = (() => {
       statusEl.innerHTML = `<span class="dot"></span>${KredoUI.escapeHtml(identity.name)}`;
       statusEl.title = identity.pubkey;
     } else {
-      statusEl.innerHTML = '<span class="dot offline"></span>No identity';
-      statusEl.title = 'Create an identity to get started';
+      statusEl.innerHTML = '<span class="dot offline"></span>Not logged in';
+      statusEl.title = 'Load identity from Setup to sign attestations';
     }
   }
 
@@ -83,8 +78,8 @@ const KredoApp = (() => {
     if (!statusEl) return;
     try {
       const data = await KredoAPI.health();
-      statusEl.innerHTML = `<span class="dot"></span>API v${KredoUI.escapeHtml(data.version)}`;
-      statusEl.title = 'Connected to api.aikredo.com';
+      statusEl.innerHTML = '<span class="dot"></span>API online';
+      statusEl.title = `Connected to api.aikredo.com (v${KredoUI.escapeHtml(data.version)})`;
     } catch {
       statusEl.innerHTML = '<span class="dot offline"></span>API offline';
       statusEl.title = 'Cannot reach api.aikredo.com';

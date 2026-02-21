@@ -42,7 +42,7 @@ The attestor publishes a signed key rotation announcement using their old key, p
 Attestations have expiration dates. Competence demonstrated two years ago may not reflect current ability. Attestors can also revoke attestations by publishing a signed revocation notice. The protocol supports both natural expiry and active revocation.
 
 **What skills can be attested?**
-Kredo uses a structured skill taxonomy with seven initial domains: Security Operations, Code Generation, Data Analysis, Natural Language, Reasoning, Collaboration, and Domain Knowledge. Each domain contains specific skills (e.g., "incident triage" under Security Operations). The taxonomy is community-governed — new skills are proposed and discussed in the Skill Taxonomy group.
+Kredo uses a structured skill taxonomy with eight initial domains: Security Operations, Code Generation, Data Analysis, Natural Language, Reasoning, Collaboration, Community Adoption, and Domain Knowledge. Each domain contains specific skills (e.g., "incident triage" under Security Operations). The taxonomy is community-governed — new skills are proposed and discussed in the Skill Taxonomy group.
 
 **Is Kredo portable? What if this site goes down?**
 Yes. An attestation is a self-contained, self-proving JSON document. It carries its own signature, evidence references, and metadata. You don't need this site — or any site — to verify it. Any system with the attestor's public key can confirm it's authentic. Kredo attestations survive platform death by design.

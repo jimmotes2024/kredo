@@ -7,6 +7,70 @@
 const BrowseView = (() => {
   let currentProfile = null;
 
+  function bindBrowseActions() {
+    const root = document.getElementById('view');
+    if (!root) return;
+
+    if (!root.dataset.browseBound) {
+      root.dataset.browseBound = '1';
+      root.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-browse-action]');
+        if (!target) return;
+        const action = target.dataset.browseAction;
+        switch (action) {
+          case 'search':
+            event.preventDefault();
+            doSearch();
+            break;
+          case 'list-all':
+            event.preventDefault();
+            listAll();
+            break;
+          case 'view-profile':
+            event.preventDefault();
+            if (target.dataset.pubkey) viewProfile(target.dataset.pubkey);
+            break;
+          case 'copy-profile-key':
+            event.preventDefault();
+            if (target.dataset.pubkey) {
+              KredoUI.copyToClipboard(target.dataset.pubkey, 'Public key');
+            }
+            break;
+          case 'attest-agent':
+            event.preventDefault();
+            if (target.dataset.pubkey) {
+              localStorage.setItem('attest_subject', target.dataset.pubkey);
+              window.location.hash = '#/attest';
+            }
+            break;
+          default:
+            break;
+        }
+      });
+    }
+
+    const nameInput = root.querySelector('#search-name');
+    const skillInput = root.querySelector('#search-skill');
+    if (nameInput && !nameInput.dataset.bound) {
+      nameInput.dataset.bound = '1';
+      nameInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          doSearch();
+        }
+      });
+    }
+    if (skillInput && !skillInput.dataset.bound) {
+      skillInput.dataset.bound = '1';
+      skillInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          doSearch();
+        }
+      });
+    }
+  }
+
   async function render() {
     KredoUI.renderView(`
       <h1 class="page-title">Browse Agents</h1>
@@ -42,14 +106,15 @@ const BrowseView = (() => {
           </div>
         </div>
         <div class="btn-group">
-          <button class="btn btn-primary" onclick="BrowseView.doSearch()">Search</button>
-          <button class="btn" onclick="BrowseView.listAll()">Show All Agents</button>
+          <button class="btn btn-primary" data-browse-action="search">Search</button>
+          <button class="btn" data-browse-action="list-all">Show All Agents</button>
         </div>
       </div>
 
       <div id="browse-results"></div>
       <div id="browse-profile"></div>
     `);
+    bindBrowseActions();
 
     // Load domain options
     try {
@@ -156,14 +221,18 @@ const BrowseView = (() => {
         <div class="card-header">${total} agent${total !== 1 ? 's' : ''}</div>
         ${KredoUI.buildTable(
           [
-            { label: 'Name', render: row => `<a href="javascript:void(0)" onclick="BrowseView.viewProfile('${KredoUI.escapeHtml(row.pubkey)}')">${KredoUI.escapeHtml(row.name || '(unnamed)')}</a>` },
+            {
+              label: 'Name',
+              render: row => `<button class="btn-link" data-browse-action="view-profile" data-pubkey="${KredoUI.escapeHtml(row.pubkey)}">${KredoUI.escapeHtml(row.name || '(unnamed)')}</button>`,
+            },
             { label: 'Type', render: row => row.type !== 'unknown' ? KredoUI.typeBadge(row.type) : '' },
             { label: 'Key', render: row => `<span style="font-family:var(--mono);font-size:0.8rem">${KredoUI.shortKey(row.pubkey)}</span>` },
-            { label: 'Registered', render: row => row.registered_at ? KredoUI.formatDate(row.registered_at) : '' },
+            { label: 'Registered', render: row => (row.first_seen || row.registered || row.registered_at) ? KredoUI.formatDate(row.first_seen || row.registered || row.registered_at) : '' },
           ],
           agents
         )}
       </div>`;
+    bindBrowseActions();
   }
 
   async function viewProfile(pubkey) {
@@ -180,6 +249,7 @@ const BrowseView = (() => {
 
   function renderProfileDetail(profile) {
     const profileDiv = document.getElementById('browse-profile');
+    currentProfile = profile;
     const ac = profile.attestation_count || {};
     const trust = profile.trust_analysis || {};
 
@@ -190,7 +260,7 @@ const BrowseView = (() => {
           <div class="review-row">
             <div class="review-key">Public Key</div>
             <div class="review-val">
-              <div class="key-display" onclick="KredoUI.copyToClipboard('${KredoUI.escapeHtml(profile.pubkey)}', 'Public key')" title="Click to copy">${KredoUI.escapeHtml(profile.pubkey)}</div>
+              <div class="key-display" data-browse-action="copy-profile-key" data-pubkey="${KredoUI.escapeHtml(profile.pubkey)}" title="Click to copy">${KredoUI.escapeHtml(profile.pubkey)}</div>
             </div>
           </div>
           <div class="review-row">
@@ -247,7 +317,7 @@ const BrowseView = (() => {
       html += `<div style="margin-top:1rem"><h4 style="margin-bottom:0.5rem">Attestors</h4>`;
       html += KredoUI.buildTable(
         [
-          { label: 'Key', render: row => `<a href="javascript:void(0)" onclick="BrowseView.viewProfile('${KredoUI.escapeHtml(row.pubkey)}')">${KredoUI.shortKey(row.pubkey)}</a>` },
+          { label: 'Key', render: row => `<button class="btn-link" data-browse-action="view-profile" data-pubkey="${KredoUI.escapeHtml(row.pubkey)}">${KredoUI.shortKey(row.pubkey)}</button>` },
           { label: 'Type', render: row => KredoUI.typeBadge(row.type) },
           { label: 'Attestations', key: 'attestation_count_for_subject' },
         ],
@@ -270,16 +340,14 @@ const BrowseView = (() => {
       html += '</div>';
     }
 
-    const identity = KredoStorage.getIdentity();
-    if (identity) {
-      html += `<div class="btn-group" style="margin-top:1rem">
-        <a href="#/attest" class="btn btn-primary" onclick="localStorage.setItem('attest_subject','${KredoUI.escapeHtml(profile.pubkey)}')">Attest This Agent</a>
-        <button class="btn" onclick="KredoUI.copyToClipboard('${KredoUI.escapeHtml(profile.pubkey)}', 'Public key')">Copy Key</button>
-      </div>`;
-    }
+    html += `<div class="btn-group" style="margin-top:1rem">
+      <button class="btn btn-primary" data-browse-action="attest-agent" data-pubkey="${KredoUI.escapeHtml(profile.pubkey)}">Attest This Agent</button>
+      <button class="btn" data-browse-action="copy-profile-key" data-pubkey="${KredoUI.escapeHtml(profile.pubkey)}">Copy Key</button>
+    </div>`;
 
     html += '</div>';
     profileDiv.innerHTML = html;
+    bindBrowseActions();
 
     // Scroll to profile
     document.getElementById('profile-detail').scrollIntoView({ behavior: 'smooth' });

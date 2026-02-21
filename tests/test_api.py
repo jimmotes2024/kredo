@@ -628,7 +628,7 @@ class TestTaxonomy:
         assert r.status_code == 200
         data = r.json()
         assert "domains" in data
-        assert len(data["domains"]) == 7
+        assert len(data["domains"]) == 8
         assert "security-operations" in data["domains"]
 
     def test_domain_skills(self, client):

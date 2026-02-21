@@ -9,9 +9,17 @@ const TaxonomyView = (() => {
     if (!identity) return { identity: null, secretKey: null };
 
     if (KredoStorage.isEncrypted()) {
-      const passphrase = prompt('Enter your passphrase to sign this taxonomy change:');
+      const passphrase = await KredoUI.requestPassphrase('Enter your passphrase to sign this taxonomy change', { submitLabel: 'Sign' });
       if (!passphrase) return { identity, secretKey: null };
       const secretKey = await KredoStorage.getSecretKey(passphrase);
+      if (!secretKey) {
+        const reason = KredoStorage.getLastSecretKeyError ? KredoStorage.getLastSecretKeyError() : null;
+        if (reason === 'atlas_pbkdf2_unsupported') {
+          KredoUI.showAlert('Atlas cannot unlock this key (PBKDF2-encrypted). Use Chrome/Safari or load an Atlas-compatible encrypted backup.', 'error');
+        } else {
+          KredoUI.showAlert('Wrong passphrase.', 'error');
+        }
+      }
       return { identity, secretKey };
     }
 
@@ -20,12 +28,10 @@ const TaxonomyView = (() => {
   }
 
   async function render() {
-    const hasId = KredoStorage.hasIdentity();
     KredoUI.renderView(`
       <h1 class="page-title">Skill Taxonomy</h1>
       <p class="page-subtitle">Kredo organizes skills into domains. Browse the taxonomy to see what skills can be attested.</p>
 
-      ${hasId ? `
       <div class="card" style="margin-bottom:1.5rem">
         <h3>Add Custom Domain or Skill</h3>
         <p class="page-subtitle" style="margin-bottom:1rem">Extend the taxonomy with your own domains and skills. Requires your identity signature.</p>
@@ -38,7 +44,7 @@ const TaxonomyView = (() => {
             <label for="custom-domain-label">Domain Label</label>
             <input type="text" id="custom-domain-label" placeholder="e.g. VISE Operations">
           </div>
-          <button class="btn btn-primary" onclick="TaxonomyView.addDomain()" id="btn-add-domain">Add Domain</button>
+          <button class="btn btn-primary" data-tax-action="add-domain" id="btn-add-domain">Add Domain</button>
         </div>
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
           <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
@@ -49,10 +55,9 @@ const TaxonomyView = (() => {
             <label for="custom-skill-id">Skill ID</label>
             <input type="text" id="custom-skill-id" placeholder="e.g. chain-orchestration">
           </div>
-          <button class="btn btn-primary" onclick="TaxonomyView.addSkill()" id="btn-add-skill">Add Skill</button>
+          <button class="btn btn-primary" data-tax-action="add-skill" id="btn-add-skill">Add Skill</button>
         </div>
       </div>
-      ` : ''}
 
       <div id="taxonomy-tree">
         <div class="loading"><div class="spinner"></div><span>Loading taxonomy...</span></div>
@@ -62,7 +67,8 @@ const TaxonomyView = (() => {
     try {
       const taxonomy = await KredoAPI.getTaxonomy();
       renderTree(taxonomy);
-      if (hasId) populateDomainSelect(taxonomy);
+      populateDomainSelect(taxonomy);
+      bindTaxonomyActions();
     } catch (err) {
       document.getElementById('taxonomy-tree').innerHTML =
         `<p style="color:var(--red);padding:1rem">${KredoUI.escapeHtml(err.message)}</p>`;
@@ -108,7 +114,7 @@ const TaxonomyView = (() => {
     for (const [key, domain] of domains) {
       html += `
         <div class="domain-item" id="domain-${key}">
-          <div class="domain-header" onclick="TaxonomyView.toggleDomain('${key}')">
+          <div class="domain-header" data-tax-action="toggle-domain" data-tax-domain="${KredoUI.escapeHtml(key)}">
             <h3>${KredoUI.escapeHtml(domain.label)}</h3>
             <div style="display:flex;align-items:center;gap:0.75rem">
               <span class="count">${domain.skills.length} skills</span>
@@ -126,6 +132,35 @@ const TaxonomyView = (() => {
     // Expand all by default
     domains.forEach(([key]) => {
       document.getElementById('domain-' + key).classList.add('expanded');
+    });
+  }
+
+  function bindTaxonomyActions() {
+    const root = document.getElementById('view');
+    if (!root) return;
+
+    root.querySelectorAll('[data-tax-action]').forEach((el) => {
+      if (el.dataset.bound) return;
+      el.dataset.bound = '1';
+      const action = el.dataset.taxAction;
+      el.addEventListener('click', (event) => {
+        switch (action) {
+          case 'add-domain':
+            event.preventDefault();
+            addDomain();
+            break;
+          case 'add-skill':
+            event.preventDefault();
+            addSkill();
+            break;
+          case 'toggle-domain':
+            event.preventDefault();
+            toggleDomain(el.dataset.taxDomain || '');
+            break;
+          default:
+            break;
+        }
+      });
     });
   }
 

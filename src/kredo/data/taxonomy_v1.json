@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "domains": {
     "security-operations": {
       "label": "Security Operations",
@@ -70,6 +70,13 @@
         "feedback-integration",
         "conflict-resolution",
         "mentoring"
+      ]
+    },
+    "community-adoption": {
+      "label": "Community Adoption",
+      "skills": [
+        "early-adopter",
+        "beta-tester"
       ]
     },
     "domain-knowledge": {

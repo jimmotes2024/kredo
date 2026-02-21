@@ -10,9 +10,15 @@ const KredoStorage = (() => {
   const PUBKEY_RE = /^ed25519:[0-9a-f]{64}$/;
   const SECRET_KEY_HEX_RE = /^[0-9a-f]{128}$/;
   const HEX_RE = /^[0-9a-f]+$/;
+  let lastSecretKeyError = null;
 
   function isHex(value) {
     return typeof value === 'string' && HEX_RE.test(value);
+  }
+
+  function isAtlasBrowser() {
+    const ua = (globalThis.navigator && globalThis.navigator.userAgent) || '';
+    return /atlas/i.test(ua);
   }
 
   /**
@@ -58,13 +64,39 @@ const KredoStorage = (() => {
    * Returns the hex string or null if decryption fails / no identity.
    */
   async function getSecretKey(passphrase) {
+    lastSecretKeyError = null;
     const id = getIdentity();
-    if (!id) return null;
-    if (id.secretKey) return id.secretKey;
-    if (id.encrypted && passphrase) {
-      return KredoCrypto.decryptSecretKey(id.encrypted, passphrase);
+    if (!id) {
+      lastSecretKeyError = 'no_identity';
+      return null;
     }
+    if (id.secretKey) {
+      return id.secretKey;
+    }
+    if (id.encrypted && passphrase) {
+      // Atlas currently hard-crashes on some PBKDF2 WebCrypto operations.
+      // Fail safely with an explicit compatibility code instead of invoking PBKDF2.
+      if (isAtlasBrowser() && id.encrypted.kdf === 'pbkdf2-sha256') {
+        lastSecretKeyError = 'atlas_pbkdf2_unsupported';
+        return null;
+      }
+      const decrypted = await KredoCrypto.decryptSecretKey(id.encrypted, passphrase);
+      if (!decrypted) {
+        lastSecretKeyError = 'decrypt_failed';
+        return null;
+      }
+      return decrypted;
+    }
+    if (id.encrypted && !passphrase) {
+      lastSecretKeyError = 'passphrase_required';
+      return null;
+    }
+    lastSecretKeyError = 'secret_unavailable';
     return null;
+  }
+
+  function getLastSecretKeyError() {
+    return lastSecretKeyError;
   }
 
   /**
@@ -124,13 +156,7 @@ const KredoStorage = (() => {
       type: data.type || 'human',
       pubkey: normalizedPubkey,
     };
-    if (data.secretKey) {
-      const normalizedSecret = String(data.secretKey).toLowerCase().trim();
-      if (!SECRET_KEY_HEX_RE.test(normalizedSecret)) {
-        throw new Error('Invalid identity file: bad secretKey format');
-      }
-      identity.secretKey = normalizedSecret;
-    } else if (data.encrypted) {
+    if (data.encrypted) {
       const enc = data.encrypted;
       if (
         !enc
@@ -141,6 +167,12 @@ const KredoStorage = (() => {
         throw new Error('Invalid identity file: malformed encrypted key blob');
       }
       identity.encrypted = data.encrypted;
+    } else if (data.secretKey) {
+      const normalizedSecret = String(data.secretKey).toLowerCase().trim();
+      if (!SECRET_KEY_HEX_RE.test(normalizedSecret)) {
+        throw new Error('Invalid identity file: bad secretKey format');
+      }
+      identity.secretKey = normalizedSecret;
     } else {
       throw new Error('Identity file has no secret key (plain or encrypted)');
     }
@@ -159,9 +191,21 @@ const KredoStorage = (() => {
       name: id.name,
       type: id.type,
       pubkey: id.pubkey,
-      secretKey: secretKeyHex || id.secretKey,
+      backup_format: 'kredo-identity-v2',
       exported_at: KredoCrypto.formatDate(new Date()),
     };
+
+    const providedSecret = typeof secretKeyHex === 'string' ? secretKeyHex : null;
+    if (providedSecret) {
+      exportData.secretKey = providedSecret;
+      exportData.key_storage = 'plaintext';
+    } else if (id.encrypted) {
+      exportData.encrypted = id.encrypted;
+      exportData.key_storage = 'encrypted';
+    } else if (id.secretKey) {
+      exportData.secretKey = id.secretKey;
+      exportData.key_storage = 'plaintext';
+    }
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -178,6 +222,7 @@ const KredoStorage = (() => {
     getIdentity,
     saveIdentity,
     getSecretKey,
+    getLastSecretKeyError,
     isEncrypted,
     hasIdentity,
     clearIdentity,

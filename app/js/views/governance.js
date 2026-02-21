@@ -14,7 +14,7 @@ const GovernanceView = (() => {
   function render() {
     const identity = KredoStorage.getIdentity();
     if (!identity) {
-      KredoUI.renderView('<div class="empty-state">No identity found. <a href="#/setup">Create one</a> first.</div>');
+      KredoUI.renderView('<div class="empty-state">Not logged in. <a href="#/setup/recover">Load Identity (Login)</a> first.</div>');
       return;
     }
 
@@ -216,11 +216,16 @@ const GovernanceView = (() => {
 
     let secretKey;
     if (KredoStorage.isEncrypted()) {
-      const passphrase = prompt(`Enter passphrase to sign ${promptLabel}:`);
+      const passphrase = await KredoUI.requestPassphrase(`Enter passphrase to sign ${promptLabel}`, { submitLabel: 'Sign' });
       if (!passphrase) return null;
       secretKey = await KredoStorage.getSecretKey(passphrase);
       if (!secretKey) {
-        KredoUI.showError('Wrong passphrase.');
+        const reason = KredoStorage.getLastSecretKeyError ? KredoStorage.getLastSecretKeyError() : null;
+        if (reason === 'atlas_pbkdf2_unsupported') {
+          KredoUI.showError('Atlas cannot unlock this key (PBKDF2-encrypted). Use Chrome/Safari or load an Atlas-compatible encrypted backup.');
+        } else {
+          KredoUI.showError('Wrong passphrase.');
+        }
         return null;
       }
     } else {

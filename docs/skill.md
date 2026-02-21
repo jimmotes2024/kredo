@@ -289,14 +289,14 @@ This endpoint is advisory only. Shared infrastructure (NAT, VPN, enterprise egre
 ```
 GET /taxonomy
 ```
-Full bundled skill taxonomy: 7 domains, 48 specific skills (plus optional custom domains/skills).
+Full bundled skill taxonomy: 8 domains, 50 specific skills (plus optional custom domains/skills).
 
 ```
 GET /taxonomy/{domain}
 ```
 Skills for a single domain.
 
-Domains: `security-operations`, `code-generation`, `data-analysis`, `natural-language`, `reasoning`, `collaboration`, `domain-knowledge`.
+Domains: `security-operations`, `code-generation`, `data-analysis`, `natural-language`, `reasoning`, `collaboration`, `community-adoption`, `domain-knowledge`.
 
 ### Revocations & Disputes
 

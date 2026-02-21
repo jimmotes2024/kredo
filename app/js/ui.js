@@ -179,6 +179,97 @@ const KredoUI = (() => {
     }
   }
 
+  // --- Passphrase prompt modal ---
+
+  function requestPassphrase(title = 'Enter passphrase', options = {}) {
+    return new Promise((resolve) => {
+      const allowBlank = !!options.allowBlank;
+      const placeholder = options.placeholder || 'Passphrase';
+      const submitLabel = options.submitLabel || 'Continue';
+      const cancelLabel = options.cancelLabel || 'Cancel';
+      const overlayId = 'kredo-passphrase-overlay';
+
+      const existing = document.getElementById(overlayId);
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = overlayId;
+      overlay.style.position = 'fixed';
+      overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0,0,0,0.55)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = '9999';
+
+      const panel = document.createElement('div');
+      panel.style.width = 'min(92vw, 420px)';
+      panel.style.background = 'var(--bg-card)';
+      panel.style.border = '1px solid var(--border)';
+      panel.style.borderRadius = 'var(--radius)';
+      panel.style.padding = '1rem';
+      panel.style.boxShadow = 'var(--shadow)';
+      panel.innerHTML = `
+        <div style="font-weight:600;margin-bottom:0.75rem">${escapeHtml(title)}</div>
+        <input id="kredo-passphrase-input" type="password" autocomplete="current-password" placeholder="${escapeHtml(placeholder)}"
+          style="width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text);" />
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.85rem">
+          <button id="kredo-passphrase-cancel" class="btn">${escapeHtml(cancelLabel)}</button>
+          <button id="kredo-passphrase-submit" class="btn btn-primary">${escapeHtml(submitLabel)}</button>
+        </div>
+      `;
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+
+      const input = panel.querySelector('#kredo-passphrase-input');
+      const cancelBtn = panel.querySelector('#kredo-passphrase-cancel');
+      const submitBtn = panel.querySelector('#kredo-passphrase-submit');
+
+      const close = (value) => {
+        overlay.remove();
+        resolve(value);
+      };
+
+      cancelBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        close(null);
+      });
+
+      submitBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        const value = (input.value || '');
+        if (!allowBlank && !value.trim()) {
+          showWarning('Passphrase is required.');
+          input.focus();
+          return;
+        }
+        close(value);
+      });
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) close(null);
+      });
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const value = (input.value || '');
+          if (!allowBlank && !value.trim()) {
+            showWarning('Passphrase is required.');
+            return;
+          }
+          close(value);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          close(null);
+        }
+      });
+
+      setTimeout(() => input.focus(), 0);
+    });
+  }
+
   // --- Render view into container ---
 
   function renderView(html) {
@@ -248,6 +339,7 @@ const KredoUI = (() => {
     formatDateTime,
     timeAgo,
     copyToClipboard,
+    requestPassphrase,
     renderView,
     getFormValues,
     typeBadge,

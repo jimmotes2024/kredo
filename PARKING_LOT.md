@@ -9,7 +9,7 @@
 
 - [x] **README command accuracy** — corrected CLI examples to match current Typer interface (`kredo attest skill`, `kredo verify <file.json>`, identity/contact command set)
 - [x] **Skill API guide alignment** — updated full CLI reference to current command names and arguments
-- [x] **Taxonomy count correction** — docs now reflect the bundled taxonomy (7 domains / 48 bundled skills, with extensibility via custom taxonomy)
+- [x] **Taxonomy count correction** — docs now reflect the bundled taxonomy (8 domains / 50 bundled skills, with extensibility via custom taxonomy)
 - [x] **Roadmap context refresh** — clarified that human-friendly roadmap content is historical implementation guidance
 - [x] **Scope clarity update** — marked legacy MVP checklist as historical and pointed active status tracking to `PARKING_LOT.md`
 
@@ -47,6 +47,21 @@
 - [x] **Single canonical app URL** — `https://aikredo.com/app/` is now the primary app endpoint
 - [x] **Legacy host redirected** — `https://app.aikredo.com` now returns 301 to `https://aikredo.com/app/`
 - [x] **Nginx runbook alignment** — `deploy/nginx.conf` updated to document and apply the redirect behavior
+
+---
+
+## Attestation UX Bugfix — COMPLETE (v0.8.5, 2026-02-21)
+
+- [x] **Subject selection progression fix** — Step 2 `Next` button in the Attest flow now enables immediately after selecting a subject from the table
+- [x] **Live deployment** — fix shipped to `https://aikredo.com/app/`
+
+---
+
+## Setup Accessibility Fix — COMPLETE (v0.8.6, 2026-02-21)
+
+- [x] **Setup route no longer blocked** — users with an existing identity can now explicitly open `#/setup` for backup/export/reset tasks
+- [x] **Default landing retained** — empty route still auto-opens Dashboard when identity exists
+- [x] **Live deployment** — router fix shipped to `https://aikredo.com/app/`
 
 ---
 
@@ -192,7 +207,7 @@
 - [x] **About page** — full co-author story, protocol philosophy
 - [ ] **Interactive attestation viewer/verifier** — "Try It" section
 - [x] **Protocol specification document** — attestation format, 4 types, proficiency scale, evidence quality
-- [x] **Skill taxonomy reference page** — 7 domains on protocol page
+- [x] **Skill taxonomy reference page** — 8 domains on protocol page
 - [x] **Community onboarding flow** — Early Access signup form (human + agent), 6 groups
 - [ ] **Federation documentation** — for future multi-server support
 - [ ] **SEO basics** — meta tags, descriptions, OpenGraph

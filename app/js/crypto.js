@@ -234,6 +234,43 @@ const KredoCrypto = (() => {
 
   const PBKDF2_ITERATIONS = 210000;
   const PBKDF2_SALT_BYTES = 16;
+  const PBKDF2_TIMEOUT_MS = 8000;
+  const COMPAT_KDF_ITERATIONS = 2000;
+
+  function withTimeout(promise, timeoutMs, label) {
+    let timerId = null;
+    const timeout = new Promise((_, reject) => {
+      timerId = setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+      if (timerId) clearTimeout(timerId);
+    });
+  }
+
+  function shouldUseCompatKdf() {
+    const ua = (globalThis.navigator && globalThis.navigator.userAgent) || '';
+    return /atlas/i.test(ua);
+  }
+
+  function deriveCompatEncryptionKey(passphrase, saltBytes, iterations = COMPAT_KDF_ITERATIONS) {
+    const encoder = new TextEncoder();
+    const passBytes = encoder.encode(passphrase);
+    const initial = new Uint8Array(saltBytes.length + passBytes.length);
+    initial.set(saltBytes, 0);
+    initial.set(passBytes, saltBytes.length);
+
+    let digest = nacl.hash(initial); // 64-byte SHA-512
+    for (let i = 0; i < iterations; i++) {
+      const mixed = new Uint8Array(digest.length + saltBytes.length + passBytes.length);
+      mixed.set(digest, 0);
+      mixed.set(saltBytes, digest.length);
+      mixed.set(passBytes, digest.length + saltBytes.length);
+      digest = nacl.hash(mixed);
+    }
+    return digest.slice(0, 32);
+  }
 
   function deriveEncryptionKeyLegacy(passphrase) {
     const encoded = new TextEncoder().encode(passphrase);
@@ -246,16 +283,23 @@ const KredoCrypto = (() => {
    */
   async function deriveEncryptionKey(passphrase, saltBytes, iterations = PBKDF2_ITERATIONS) {
     const subtle = globalThis.crypto && globalThis.crypto.subtle;
-    if (subtle) {
-      const encoder = new TextEncoder();
-      const keyMaterial = await subtle.importKey(
+    if (!subtle) {
+      throw new Error('WebCrypto PBKDF2 is unavailable in this browser');
+    }
+    const encoder = new TextEncoder();
+    const keyMaterial = await withTimeout(
+      subtle.importKey(
         'raw',
         encoder.encode(passphrase),
         'PBKDF2',
         false,
         ['deriveBits']
-      );
-      const bits = await subtle.deriveBits(
+      ),
+      PBKDF2_TIMEOUT_MS,
+      'WebCrypto importKey'
+    );
+    const bits = await withTimeout(
+      subtle.deriveBits(
         {
           name: 'PBKDF2',
           salt: saltBytes,
@@ -264,14 +308,11 @@ const KredoCrypto = (() => {
         },
         keyMaterial,
         256
-      );
-      return new Uint8Array(bits);
-    }
-
-    // Legacy fallback if WebCrypto PBKDF2 is unavailable.
-    const legacySeed = new Uint8Array([...saltBytes, ...new TextEncoder().encode(passphrase)]);
-    const legacyHash = nacl.hash(legacySeed);
-    return legacyHash.slice(0, 32);
+      ),
+      PBKDF2_TIMEOUT_MS,
+      'WebCrypto PBKDF2'
+    );
+    return new Uint8Array(bits);
   }
 
   /**
@@ -280,14 +321,30 @@ const KredoCrypto = (() => {
    */
   async function encryptSecretKey(secretKeyHex, passphrase) {
     const salt = nacl.randomBytes(PBKDF2_SALT_BYTES);
-    const key = await deriveEncryptionKey(passphrase, salt, PBKDF2_ITERATIONS);
+    let key;
+    let kdf = 'pbkdf2-sha256';
+    let iterations = PBKDF2_ITERATIONS;
+    if (shouldUseCompatKdf()) {
+      key = deriveCompatEncryptionKey(passphrase, salt, COMPAT_KDF_ITERATIONS);
+      kdf = 'compat-sha512';
+      iterations = COMPAT_KDF_ITERATIONS;
+    } else {
+      try {
+        key = await deriveEncryptionKey(passphrase, salt, PBKDF2_ITERATIONS);
+      } catch {
+        // Fallback for browsers where WebCrypto PBKDF2 hangs/fails.
+        key = deriveCompatEncryptionKey(passphrase, salt, COMPAT_KDF_ITERATIONS);
+        kdf = 'compat-sha512';
+        iterations = COMPAT_KDF_ITERATIONS;
+      }
+    }
     const nonce = nacl.randomBytes(24);
     const message = new TextEncoder().encode(secretKeyHex);
     const encrypted = nacl.secretbox(message, nonce, key);
     return {
       version: 2,
-      kdf: 'pbkdf2-sha256',
-      iterations: PBKDF2_ITERATIONS,
+      kdf,
+      iterations,
       salt: bytesToHex(salt),
       nonce: bytesToHex(nonce),
       ciphertext: bytesToHex(encrypted),
@@ -309,6 +366,10 @@ const KredoCrypto = (() => {
         const saltBytes = hexToBytes(encrypted.salt);
         const iterations = Number(encrypted.iterations) || PBKDF2_ITERATIONS;
         key = await deriveEncryptionKey(passphrase, saltBytes, iterations);
+      } else if (encrypted.version === 2 && encrypted.kdf === 'compat-sha512' && encrypted.salt) {
+        const saltBytes = hexToBytes(encrypted.salt);
+        const iterations = Number(encrypted.iterations) || COMPAT_KDF_ITERATIONS;
+        key = deriveCompatEncryptionKey(passphrase, saltBytes, iterations);
       } else {
         // Backward compatibility with older unsalted format.
         key = deriveEncryptionKeyLegacy(passphrase);

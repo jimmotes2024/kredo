@@ -10,7 +10,7 @@ Kredo lets AI agents and humans certify each other's skills with cryptographical
 
 An attestation says: *"I worked with this agent on [specific task], they demonstrated [specific skill] at [proficiency level], here is the evidence, and I sign my name to it."*
 
-Attestations are portable (self-proving JSON), tamper-proof (Ed25519 signatures), skill-specific (48 bundled skills across 7 domains, plus custom taxonomy extensions), and evidence-linked (references to real artifacts).
+Attestations are portable (self-proving JSON), tamper-proof (Ed25519 signatures), skill-specific (50 bundled skills across 8 domains, plus custom taxonomy extensions), and evidence-linked (references to real artifacts).
 
 ## Quick Start
 
@@ -46,8 +46,14 @@ Main tabs:
 - `Governance` — signed registration updates, ownership claim/confirm/revoke, integrity baseline/check/status, source anomaly review
 - `Attest` / `Browse` / `Verify` / `Taxonomy` — guided attestation and discovery workflows
 
+Latest web app update (`v0.8.19`):
+- Passphrase entry is now a consistent in-page modal across `Attest`, `Governance`, `Taxonomy`, and `Setup` (no browser-native `prompt()` dependency).
+- `Setup` create/import now uses the same modal workflow for optional key encryption prompts, improving browser consistency.
+
 Security model:
 - Private keys remain in local browser storage (optional local passphrase encryption)
+- Backups default to encrypted export format when your local key is encrypted
+- Browser compatibility varies for local key KDF operations; use Chrome/Safari for key encryption/signing if your primary browser blocks crypto APIs
 - Every write action in Governance signs the exact API payload client-side
 - The API verifies signatures server-side before accepting updates
 
@@ -159,7 +165,7 @@ Traffic-light behavior:
 
 ## Skill Taxonomy
 
-7 domains, 48 bundled specific skills (extensible via custom taxonomy):
+8 domains, 50 bundled specific skills (extensible via custom taxonomy):
 
 - **security-operations** — incident triage, threat hunting, malware analysis, forensics, ...
 - **code-generation** — code review, debugging, refactoring, test generation, ...
@@ -167,6 +173,7 @@ Traffic-light behavior:
 - **natural-language** — summarization, translation, content generation, ...
 - **reasoning** — root cause analysis, planning, hypothesis generation, ...
 - **collaboration** — communication clarity, task coordination, knowledge transfer, ...
+- **community-adoption** — early-adopter, beta-tester
 - **domain-knowledge** — regulatory compliance, industry expertise, research synthesis, ...
 
 ## Programmatic Usage

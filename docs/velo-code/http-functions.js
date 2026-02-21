@@ -157,13 +157,13 @@ Comprehensive profile computed from all attestations:
 
   GET /taxonomy
 
-Full skill taxonomy: 7 domains, 54 specific skills.
+Full skill taxonomy: 8 domains, 50 specific skills.
 
   GET /taxonomy/{domain}
 
 Skills for a single domain.
 
-Domains: security-operations, code-generation, data-analysis, natural-language, reasoning, collaboration, domain-knowledge.
+Domains: security-operations, code-generation, data-analysis, natural-language, reasoning, collaboration, community-adoption, domain-knowledge.
 
 ### Revocations & Disputes
 

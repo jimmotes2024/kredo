@@ -351,6 +351,22 @@ footer a { color: var(--text-muted); }
   flex-wrap: wrap;
 }
 
+.btn-link {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 /* --- Tables --- */
 
 .data-table {
@@ -818,6 +834,7 @@ footer a { color: var(--text-muted); }
 }
 
 .landing-card {
+  display: block;
   background: var(--bg-card);
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -826,6 +843,8 @@ footer a { color: var(--text-muted); }
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .landing-card:hover {
