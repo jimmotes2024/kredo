@@ -173,7 +173,6 @@ CREATE TABLE IF NOT EXISTS audit_events (
     timestamp TEXT NOT NULL,
     action TEXT NOT NULL,
     actor_pubkey TEXT,
-    source_ip TEXT,
     source_ip_hash TEXT,
     user_agent TEXT,
     outcome TEXT NOT NULL,
@@ -671,13 +670,12 @@ class KredoStore:
         try:
             self._conn.execute(
                 """INSERT INTO audit_events
-                   (timestamp, action, actor_pubkey, source_ip, source_ip_hash, user_agent, outcome, details_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (timestamp, action, actor_pubkey, source_ip_hash, user_agent, outcome, details_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
                     _now_iso(),
                     action,
                     actor_pubkey,
-                    source_ip,
                     _hash_ip(source_ip),
                     user_agent,
                     outcome,
@@ -707,7 +705,6 @@ class KredoStore:
 
         rows = self._conn.execute(
             """SELECT source_ip_hash,
-                      MIN(source_ip) as sample_ip,
                       COUNT(*) as event_count,
                       COUNT(DISTINCT COALESCE(actor_pubkey, '')) as unique_actor_count,
                       COUNT(DISTINCT action) as action_type_count,
