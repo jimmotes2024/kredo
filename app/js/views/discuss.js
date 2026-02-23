@@ -2,10 +2,37 @@
  * Kredo Web App — Discussion view
  *
  * Topic list with comment counts, comment stream per topic, guest + verified posting.
+ * Uses event delegation (data-discuss-action) — no inline onclick (blocked by CSP).
  */
 
 const DiscussView = (() => {
   let currentTopic = null;
+
+  function bindDiscussActions() {
+    const root = document.getElementById('view');
+    if (!root || root.dataset.discussBound) return;
+    root.dataset.discussBound = '1';
+
+    root.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-discuss-action]');
+      if (!target) return;
+      event.preventDefault();
+      const action = target.dataset.discussAction;
+      switch (action) {
+        case 'open-topic':
+          if (target.dataset.topic) openTopic(target.dataset.topic);
+          break;
+        case 'back-to-topics':
+          render();
+          break;
+        case 'submit-comment':
+          submitComment();
+          break;
+        default:
+          break;
+      }
+    });
+  }
 
   function render() {
     currentTopic = null;
@@ -23,7 +50,7 @@ const DiscussView = (() => {
       html += '<div class="discuss-topics">';
       for (const t of topics) {
         html += `
-          <div class="topic-card" onclick="DiscussView.openTopic('${KredoUI.escapeHtml(t.id)}')">
+          <div class="topic-card" data-discuss-action="open-topic" data-topic="${KredoUI.escapeHtml(t.id)}">
             <div class="topic-card-header">
               <h3>${KredoUI.escapeHtml(t.label)}</h3>
               <span class="topic-count">${t.comment_count}</span>
@@ -33,6 +60,7 @@ const DiscussView = (() => {
       }
       html += '</div>';
       container.innerHTML = html;
+      bindDiscussActions();
     } catch (err) {
       container.innerHTML = `<div class="empty-state">Failed to load topics: ${KredoUI.escapeHtml(err.message)}</div>`;
     }
@@ -56,7 +84,7 @@ const DiscussView = (() => {
     const hasIdentity = !!identity;
 
     let html = `<div class="discuss-topic-view">`;
-    html += `<button class="btn btn-sm" onclick="DiscussView.render()" style="margin-bottom:1rem">&larr; All Topics</button>`;
+    html += `<button class="btn btn-sm" data-discuss-action="back-to-topics" style="margin-bottom:1rem">&larr; All Topics</button>`;
     html += `<h1 class="page-title">${KredoUI.escapeHtml(getTopicLabel(data.topic))}</h1>`;
     html += `<p class="page-subtitle">${data.total} comment${data.total !== 1 ? 's' : ''}</p>`;
 
@@ -83,7 +111,7 @@ const DiscussView = (() => {
       </div>`;
     }
 
-    html += `<button class="btn btn-primary" id="comment-submit" onclick="DiscussView.submitComment()">Post Comment</button>
+    html += `<button class="btn btn-primary" id="comment-submit" data-discuss-action="submit-comment">Post Comment</button>
     </div>`;
 
     // Comments list
@@ -98,6 +126,7 @@ const DiscussView = (() => {
     html += '</div></div>';
 
     container.innerHTML = html;
+    bindDiscussActions();
 
     // Wire up char counter
     const bodyEl = document.getElementById('comment-body');
