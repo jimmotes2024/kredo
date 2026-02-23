@@ -14,6 +14,7 @@ const KredoApp = (() => {
     'browse':    { view: 'browse',   label: 'Browse',    module: () => BrowseView },
     'verify':    { view: 'verify',   label: 'Verify',    module: () => VerifyView },
     'taxonomy':  { view: 'taxonomy', label: 'Taxonomy',  module: () => TaxonomyView },
+    'discuss':   { view: 'discuss',  label: 'Discuss',   module: () => DiscussView },
   };
 
   let currentView = null;

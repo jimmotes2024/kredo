@@ -227,6 +227,24 @@ const KredoAPI = (() => {
     return request('POST', '/dispute', disputeDoc);
   }
 
+  // --- Discussion ---
+
+  function getDiscussionTopics() {
+    return request('GET', '/discussion/topics');
+  }
+
+  function getTopicComments(topicId, limit = 50, offset = 0) {
+    return request('GET', `/discussion/topics/${encodeURIComponent(topicId)}?limit=${limit}&offset=${offset}`);
+  }
+
+  function postDiscussionComment(topicId, commentBody) {
+    return request('POST', `/discussion/topics/${encodeURIComponent(topicId)}/comments`, commentBody);
+  }
+
+  function deleteDiscussionComment(topicId, commentId, deleteBody) {
+    return request('DELETE', `/discussion/topics/${encodeURIComponent(topicId)}/comments/${encodeURIComponent(commentId)}`, deleteBody);
+  }
+
   return {
     health,
     register,
@@ -259,5 +277,9 @@ const KredoAPI = (() => {
     sourceAnomalies,
     revoke,
     dispute,
+    getDiscussionTopics,
+    getTopicComments,
+    postDiscussionComment,
+    deleteDiscussionComment,
   };
 })();

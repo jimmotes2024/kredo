@@ -38,3 +38,4 @@ class RateLimiter:
 # Shared instances
 submission_limiter = RateLimiter()
 registration_limiter = RateLimiter()
+discussion_limiter = RateLimiter()

@@ -183,6 +183,18 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit_events(timestamp)
 CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action);
 CREATE INDEX IF NOT EXISTS idx_audit_events_ip_hash ON audit_events(source_ip_hash);
 CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor_pubkey);
+
+CREATE TABLE IF NOT EXISTS discussion_comments (
+    id TEXT PRIMARY KEY,
+    topic TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    author_pubkey TEXT,
+    body TEXT NOT NULL,
+    is_verified INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_topic ON discussion_comments(topic, created_at);
 """
 
 
@@ -1161,3 +1173,61 @@ class KredoStore:
         if "id" not in data or "type" not in data:
             raise StoreError("Invalid attestation JSON: missing id or type")
         return self.save_attestation(json_str)
+
+    # --- Discussion Comments ---
+
+    def add_discussion_comment(
+        self,
+        comment_id: str,
+        topic: str,
+        author_name: str,
+        body: str,
+        author_pubkey: Optional[str] = None,
+        is_verified: bool = False,
+    ) -> None:
+        """Insert a discussion comment."""
+        try:
+            self._conn.execute(
+                """INSERT INTO discussion_comments
+                   (id, topic, author_name, author_pubkey, body, is_verified, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (comment_id, topic, author_name, author_pubkey, body, int(is_verified), _now_iso()),
+            )
+            self._conn.commit()
+        except sqlite3.Error as e:
+            raise StoreError(f"Failed to add discussion comment: {e}") from e
+
+    def list_discussion_comments(
+        self, topic: str, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        """List comments for a topic, newest first."""
+        rows = self._conn.execute(
+            """SELECT id, topic, author_name, author_pubkey, body, is_verified, created_at
+               FROM discussion_comments
+               WHERE topic = ?
+               ORDER BY created_at DESC
+               LIMIT ? OFFSET ?""",
+            (topic, limit, offset),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_discussion_comments(self, topic: Optional[str] = None) -> int:
+        """Count comments, optionally filtered by topic."""
+        if topic:
+            row = self._conn.execute(
+                "SELECT COUNT(*) as cnt FROM discussion_comments WHERE topic = ?",
+                (topic,),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT COUNT(*) as cnt FROM discussion_comments"
+            ).fetchone()
+        return int(row["cnt"]) if row else 0
+
+    def delete_discussion_comment(self, comment_id: str) -> bool:
+        """Delete a discussion comment by ID. Returns True if deleted."""
+        cursor = self._conn.execute(
+            "DELETE FROM discussion_comments WHERE id = ?", (comment_id,)
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0

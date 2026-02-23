@@ -28,6 +28,7 @@ from kredo.api.deps import close_store, init_store
 from kredo import taxonomy as _taxonomy_module
 from kredo.api.routers import (
     attestations,
+    discussion,
     integrity,
     profiles,
     ownership,
@@ -157,6 +158,7 @@ app.include_router(revocations.router)
 app.include_router(ownership.router)
 app.include_router(risk.router)
 app.include_router(trust_analysis.router)
+app.include_router(discussion.router)
 
 
 # --- Health ---
